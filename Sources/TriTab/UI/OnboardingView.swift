@@ -65,7 +65,7 @@ struct OnboardingView: View {
             Spacer()
 
             if page != .welcome && page != .done {
-                Button("戻る") { go(-1) }
+                Button(L("戻る", "Back")) { go(-1) }
                     .controlSize(.large)
             }
             Button(nextTitle) {
@@ -80,11 +80,11 @@ struct OnboardingView: View {
 
     private var nextTitle: String {
         switch page {
-        case .welcome: return "はじめる"
-        case .permission: return trusted ? "次へ" : "あとで"
-        case .conflicts: return "次へ"
-        case .tryIt: return "次へ"
-        case .done: return "完了"
+        case .welcome: return L("はじめる", "Get Started")
+        case .permission: return trusted ? L("次へ", "Continue") : L("あとで", "Later")
+        case .conflicts: return L("次へ", "Continue")
+        case .tryIt: return L("次へ", "Continue")
+        case .done: return L("完了", "Done")
         }
     }
 
@@ -151,22 +151,22 @@ private struct WelcomePage: View {
     let fingers: Int
 
     var body: some View {
-        PageLayout(title: "TriTab へようこそ",
-                   subtitle: "トラックパッドだけで、タブをすばやく操作。") {
+        PageLayout(title: L("TriTab へようこそ", "Welcome to TriTab"),
+                   subtitle: L("トラックパッドだけで、タブをすばやく操作。", "Control your tabs quickly, right from the trackpad.")) {
             HeroTile(colors: [Color(red: 0.98, green: 0.44, blue: 0.52), Color(red: 0.49, green: 0.23, blue: 0.93)]) {
                 GestureIllustration(kind: .swipe(.left, fingers: 3), width: 84, tint: .white)
             }
         } content: {
             VStack(alignment: .leading, spacing: 14) {
                 Feature(symbol: "hand.draw.fill", color: Sunset.rose,
-                        title: "\(fingers)本指でタブを移動・閉じる・復元",
-                        detail: "左右で移動、下で閉じる、上で閉じたタブを元に戻す。")
+                        title: L("\(fingers)本指でタブを移動・閉じる・復元", "Switch, close, and reopen tabs with \(fingers) fingers"),
+                        detail: L("左右で移動、下で閉じる、上で閉じたタブを元に戻す。", "Swipe left/right to switch, down to close, up to reopen."))
                 Feature(symbol: "hand.tap.fill", color: Sunset.fuchsia,
-                        title: "タップやクリックで、新しいタブ",
-                        detail: "\(fingers)本指クリックでリンクを新しいタブで開く。")
+                        title: L("タップやクリックで、新しいタブ", "New tabs with a tap or click"),
+                        detail: L("\(fingers)本指クリックでリンクを新しいタブで開く。", "Click with \(fingers) fingers to open a link in a new tab."))
                 Feature(symbol: "leaf.fill", color: Sunset.violet,
-                        title: "軽い",
-                        detail: "常駐しても約 11 MB。設定画面は開いたときだけ。")
+                        title: L("軽い", "Lightweight"),
+                        detail: L("常駐しても約 11 MB。設定画面は開いたときだけ。", "About 11 MB in the background. Settings load only when opened."))
             }
             .padding(.top, 10)
         }
@@ -195,8 +195,9 @@ private struct PermissionPage: View {
     let trusted: Bool
 
     var body: some View {
-        PageLayout(title: "アクセシビリティを許可",
-                   subtitle: "スワイプをタブ操作のキーに変えるために必要です。\n入力内容を読み取ったり、送信したりはしません。") {
+        PageLayout(title: L("アクセシビリティを許可", "Allow Accessibility Access"),
+                   subtitle: L("スワイプをタブ操作のキーに変えるために必要です。\n入力内容を読み取ったり、送信したりはしません。",
+                               "TriTab needs this to turn swipes into tab shortcuts.\nIt never reads or sends what you type.")) {
             HeroTile(colors: trusted ? [.green, .mint] : [Sunset.rose, Sunset.violet]) {
                 Image(systemName: trusted ? "checkmark" : "hand.raised.fill")
                     .font(.system(size: 50, weight: .semibold)).foregroundStyle(.white)
@@ -204,7 +205,7 @@ private struct PermissionPage: View {
         } content: {
             VStack(spacing: 14) {
                 if trusted {
-                    StatusPill(ok: true, text: "許可されました")
+                    StatusPill(ok: true, text: L("許可されました", "Access granted"))
                         .font(.title3)
                         .transition(.scale.combined(with: .opacity))
                 } else {
@@ -212,11 +213,12 @@ private struct PermissionPage: View {
                         KeySender.requestTrust()
                         SystemGestureChecker.openAccessibilitySettings()
                     } label: {
-                        Label("システム設定を開く", systemImage: "arrow.up.forward.app")
+                        Label(L("システム設定を開く", "Open System Settings"), systemImage: "arrow.up.forward.app")
                             .padding(.horizontal, 6)
                     }
                     .buttonStyle(SunsetButtonStyle(large: true))
-                    Text("一覧の「TriTab」をオンにすると、自動で次へ進めるようになります。")
+                    Text(L("一覧の「TriTab」をオンにすると、自動で次へ進めるようになります。",
+                           "Once you turn on TriTab in the list, you can continue right away."))
                         .font(.callout).foregroundStyle(.secondary)
                 }
             }
@@ -230,17 +232,19 @@ private struct ConflictsPage: View {
     let fingers: Int
 
     var body: some View {
-        PageLayout(title: "macOS のジェスチャーを確認",
+        PageLayout(title: L("macOS のジェスチャーを確認", "Check macOS Gestures"),
                    subtitle: conflicts.isEmpty
-                       ? "\(fingers)本指のジェスチャーは TriTab だけが使える状態です。"
-                       : "macOS 側の\(fingers)本指ジェスチャーも同時に動いてしまいます。\n次の設定を変更してください。") {
+                       ? L("\(fingers)本指のジェスチャーは TriTab だけが使える状態です。",
+                           "Only TriTab is using \(fingers)-finger gestures.")
+                       : L("macOS 側の\(fingers)本指ジェスチャーも同時に動いてしまいます。\n次の設定を変更してください。",
+                           "macOS’s own \(fingers)-finger gestures will also run at the same time.\nPlease change the settings below.")) {
             HeroTile(colors: conflicts.isEmpty ? [.green, .mint] : [Sunset.rose, Sunset.fuchsia]) {
                 Image(systemName: conflicts.isEmpty ? "checkmark" : "rectangle.and.hand.point.up.left.filled")
                     .font(.system(size: conflicts.isEmpty ? 50 : 42, weight: .semibold)).foregroundStyle(.white)
             }
         } content: {
             if conflicts.isEmpty {
-                StatusPill(ok: true, text: "競合はありません").font(.title3)
+                StatusPill(ok: true, text: L("競合はありません", "No conflicts")).font(.title3)
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(conflicts, id: \.title) { c in
@@ -255,7 +259,7 @@ private struct ConflictsPage: View {
                     Button {
                         SystemGestureChecker.openTrackpadSettings()
                     } label: {
-                        Label("トラックパッド設定を開く", systemImage: "arrow.up.forward.app")
+                        Label(L("トラックパッド設定を開く", "Open Trackpad Settings"), systemImage: "arrow.up.forward.app")
                     }
                     .buttonStyle(SunsetButtonStyle())
                     .padding(.top, 4)
@@ -273,16 +277,17 @@ private struct TryItPage: View {
     @State private var done: Set<String> = []
 
     private var items: [(id: String, kind: GestureIllustration.Kind, title: String)] {
-        [("swipe-left-\(fingers)", .swipe(.left, fingers: fingers), "左へスワイプ"),
-         ("swipe-right-\(fingers)", .swipe(.right, fingers: fingers), "右へスワイプ"),
-         ("swipe-down-\(fingers)", .swipe(.down, fingers: fingers), "下へスワイプ"),
-         ("swipe-up-\(fingers)", .swipe(.up, fingers: fingers), "上へスワイプ"),
-         ("tap-\(fingers)", .tap(fingers: fingers), "\(fingers)本指でタップ")]
+        [("swipe-left-\(fingers)", .swipe(.left, fingers: fingers), L("左へスワイプ", "Swipe left")),
+         ("swipe-right-\(fingers)", .swipe(.right, fingers: fingers), L("右へスワイプ", "Swipe right")),
+         ("swipe-down-\(fingers)", .swipe(.down, fingers: fingers), L("下へスワイプ", "Swipe down")),
+         ("swipe-up-\(fingers)", .swipe(.up, fingers: fingers), L("上へスワイプ", "Swipe up")),
+         ("tap-\(fingers)", .tap(fingers: fingers), L("\(fingers)本指でタップ", "Tap with \(fingers) fingers"))]
     }
 
     var body: some View {
-        PageLayout(title: "試してみよう",
-                   subtitle: "トラックパッドでやってみてください。うまくできたら ✓ が付きます。\nこの画面では、実際のタブ操作は行いません。") {
+        PageLayout(title: L("試してみよう", "Give It a Try"),
+                   subtitle: L("トラックパッドでやってみてください。うまくできたら ✓ が付きます。\nこの画面では、実際のタブ操作は行いません。",
+                               "Try each one on your trackpad. A ✓ appears when it works.\nYour tabs won’t actually change on this screen.")) {
             EmptyView()
         } content: {
             LazyVGrid(columns: Array(repeating: GridItem(.fixed(108), spacing: 12), count: 5), spacing: 12) {
@@ -314,7 +319,7 @@ private struct TryItPage: View {
             }
             .padding(.top, 8)
             if done.count == items.count {
-                Text("完璧です！").font(.title3.weight(.semibold)).foregroundStyle(.green)
+                Text(L("完璧です！", "Perfect!")).font(.title3.weight(.semibold)).foregroundStyle(.green)
                     .transition(.opacity)
             }
         }
@@ -330,22 +335,22 @@ private struct DonePage: View {
     @AppStorage("shelf") private var shelf = false
 
     var body: some View {
-        PageLayout(title: "準備ができました",
-                   subtitle: "メニューバーのアイコンから、いつでも設定を開けます。") {
+        PageLayout(title: L("準備ができました", "You’re All Set"),
+                   subtitle: L("メニューバーのアイコンから、いつでも設定を開けます。", "You can open Settings anytime from the menu bar icon.")) {
             HeroTile(colors: [.green, .teal]) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 52, weight: .semibold)).foregroundStyle(.white)
             }
         } content: {
             VStack(alignment: .leading, spacing: 12) {
-                Text("こちらもどうぞ").font(.headline).foregroundStyle(.secondary)
+                Text(L("こちらもどうぞ", "You might also like")).font(.headline).foregroundStyle(.secondary)
                 // 日本語を使っていない人には関係ないので出さない
                 if Settings.usesJapaneseInput {
                     Toggle(isOn: $imeCmd) {
                         Label {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text("⌘単体で英数／かな")
-                                Text("左⌘で英数、右⌘でかな").font(.caption).foregroundStyle(.secondary)
+                                Text(L("⌘単体で英数／かな", "⌘ alone for Eisu (英数) / Kana (かな)"))
+                                Text(L("左⌘で英数、右⌘でかな", "Left ⌘ for Eisu, right ⌘ for Kana")).font(.caption).foregroundStyle(.secondary)
                             }
                         } icon: { IconBadge(symbol: "character.bubble.fill", color: Sunset.fuchsia, size: 26, fill: Sunset.badge(2)) }
                     }
@@ -353,8 +358,8 @@ private struct DonePage: View {
                 Toggle(isOn: $shelf) {
                     Label {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("ノッチの棚")
-                            Text("ファイルをノッチに一時置き").font(.caption).foregroundStyle(.secondary)
+                            Text(L("ノッチの棚", "Notch Shelf"))
+                            Text(L("ファイルをノッチに一時置き", "Stash files in the notch")).font(.caption).foregroundStyle(.secondary)
                         }
                     } icon: { IconBadge(symbol: "tray.full.fill", color: Sunset.purple, size: 26, fill: Sunset.badge(3)) }
                 }

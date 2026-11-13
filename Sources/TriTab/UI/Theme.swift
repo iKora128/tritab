@@ -1,4 +1,5 @@
 import SwiftUI
+import TriTabCore
 
 /// 配色（案 B: 背景は macOS 標準、アクセントだけアイコンと同じ夕焼け）
 enum Sunset {
@@ -69,8 +70,8 @@ struct SunsetToggleStyle: ToggleStyle {
             .animation(.spring(response: 0.25, dampingFraction: 0.8), value: configuration.isOn)
             .onTapGesture { configuration.isOn.toggle() }
             .accessibilityElement()
-            .accessibilityLabel("スイッチ")
-            .accessibilityValue(configuration.isOn ? "オン" : "オフ")
+            .accessibilityLabel(L("スイッチ", "Switch"))
+            .accessibilityValue(configuration.isOn ? L("オン", "On") : L("オフ", "Off"))
             .accessibilityAddTraits(.isButton)
         }
     }

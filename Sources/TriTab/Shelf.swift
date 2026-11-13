@@ -3,6 +3,7 @@ import Carbon.HIToolbox
 import QuartzCore
 import QuickLookThumbnailing
 import QuickLookUI
+import TriTabCore
 
 // MARK: - アニメーション
 
@@ -12,19 +13,19 @@ enum ShelfAnimationStyle: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .jelly: return "ぬるっと（縦が先に伸び、横があとから追いつく・おすすめ）"
-        case .spring: return "ぷるん（少し弾む）"
-        case .smooth: return "スッ（弾まない）"
-        case .snappy: return "キビキビ（最短）"
+        case .jelly: return L("ぬるっと（縦が先に伸び、横があとから追いつく・おすすめ）", "Jelly (stretches down first, then widens; recommended)")
+        case .spring: return L("ぷるん（少し弾む）", "Springy (bounces a little)")
+        case .smooth: return L("スッ（弾まない）", "Smooth (no bounce)")
+        case .snappy: return L("キビキビ（最短）", "Snappy (fastest)")
         }
     }
 
     var shortLabel: String {
         switch self {
-        case .jelly: return "ぬるっと"
-        case .spring: return "ぷるん"
-        case .smooth: return "スッ"
-        case .snappy: return "キビキビ"
+        case .jelly: return L("ぬるっと", "Jelly")
+        case .spring: return L("ぷるん", "Springy")
+        case .smooth: return L("スッ", "Smooth")
+        case .snappy: return L("キビキビ", "Snappy")
         }
     }
 
@@ -266,7 +267,7 @@ final class ShelfController: NSObject {
             add(urls)
         } else if let image = NSImage(pasteboard: pb), let tiff = image.tiffRepresentation,
                   let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]),
-                  let url = writeCache(png, name: "画像 \(Self.stamp()).png") {
+                  let url = writeCache(png, name: "\(L("画像", "Image")) \(Self.stamp()).png") {
             add([url])
         } else if let text = pb.string(forType: .string), !text.isEmpty {
             createMemo(text)
@@ -346,7 +347,7 @@ final class ShelfController: NSObject {
     @discardableResult
     func createMemo(_ text: String = "", edit: Bool = false) -> URL? {
         try? FileManager.default.createDirectory(at: Self.memoDirectory, withIntermediateDirectories: true)
-        let url = Self.memoDirectory.appendingPathComponent("メモ \(Self.stamp()).txt")
+        let url = Self.memoDirectory.appendingPathComponent("\(L("メモ", "Note")) \(Self.stamp()).txt")
         guard (try? text.write(to: url, atomically: true, encoding: .utf8)) != nil else { return nil }
         add([url])
         if edit { openEditor(url) }
@@ -973,7 +974,7 @@ final class ShelfStage: NSView {
         case .hidden:
             break
         case .peek:
-            center(label(caption ?? "ここへ", 12, 0.75))
+            center(label(caption ?? L("ここへ", "Drop here"), 12, 0.75))
         case .collapsed:
             let icon = NSImageView(image: NSImage(systemSymbolName: "tray.full.fill", accessibilityDescription: nil)!)
             icon.contentTintColor = .white
@@ -985,10 +986,10 @@ final class ShelfStage: NSView {
             let zone = DropZoneView(frame: area.insetBy(dx: 18, dy: 12))
             message.addSubview(zone)
             if order.isEmpty {
-                center(label("離すと置けます", 17, 0.95, weight: .semibold), dy: 10)
-                center(label("ファイルを一時置きできます", 11, 0.5), dy: -13)
+                center(label(L("離すと置けます", "Release to drop here"), 17, 0.95, weight: .semibold), dy: 10)
+                center(label(L("ファイルを一時置きできます", "Stash files here for later"), 11, 0.5), dy: -13)
             } else {
-                let title = label("離すと追加", 13, 0.9, weight: .semibold)
+                let title = label(L("離すと追加", "Release to add"), 13, 0.9, weight: .semibold)
                 title.frame.origin = NSPoint(x: (area.width - title.frame.width) / 2, y: area.height - 36)
                 message.addSubview(title)
             }
@@ -996,24 +997,24 @@ final class ShelfStage: NSView {
             if let caption {
                 if order.isEmpty { center(label(caption, 15, 0.9, weight: .semibold)) }
             } else if order.isEmpty {
-                center(label("ここへドロップ", 14, 0.85), dy: 9)
-                center(label("ファイル・画像・テキスト", 11, 0.45), dy: -11)
+                center(label(L("ここへドロップ", "Drop here"), 14, 0.85), dy: 9)
+                center(label(L("ファイル・画像・テキスト", "Files, images, text"), 11, 0.45), dy: -11)
             }
             // 左: 新規メモ / 右: クリップボード（⌘C した内容）を貼り付け
             let h = min(area.height - 16, ShelfItemView.height)
             let y = (area.height - h) / 2
-            let memo = ShelfSideButton(symbol: "square.and.pencil", title: "新規メモ", shortcut: "⌘N") { [weak self] in
+            let memo = ShelfSideButton(symbol: "square.and.pencil", title: L("新規メモ", "New Note"), shortcut: "⌘N") { [weak self] in
                 self?.controller?.createMemo(edit: true)
             }
             memo.frame = NSRect(x: 10, y: y, width: ShelfSideButton.width, height: h)
             message.addSubview(memo)
-            let paste = ShelfSideButton(symbol: "doc.on.clipboard", title: "貼り付け", shortcut: Self.clipboardKind()) { [weak self] in
+            let paste = ShelfSideButton(symbol: "doc.on.clipboard", title: L("貼り付け", "Paste"), shortcut: Self.clipboardKind()) { [weak self] in
                 self?.controller?.paste()
             }
             paste.frame = NSRect(x: area.width - 10 - ShelfSideButton.width, y: y, width: ShelfSideButton.width, height: h)
             message.addSubview(paste)
             if !order.isEmpty {
-                button("xmark.circle.fill", "棚を空にする", #selector(clearAll), x: area.width - ShelfSideButton.width - 40)
+                button("xmark.circle.fill", L("棚を空にする", "Clear Shelf"), #selector(clearAll), x: area.width - ShelfSideButton.width - 40)
             }
         }
     }
@@ -1021,10 +1022,10 @@ final class ShelfStage: NSView {
     /// いまクリップボードに入っているものの種類（貼り付けボタンの下に出す）
     private static func clipboardKind() -> String {
         let pb = NSPasteboard.general
-        if pb.canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) { return "ファイル" }
-        if pb.canReadObject(forClasses: [NSImage.self], options: nil) { return "画像" }
-        if pb.string(forType: .string)?.isEmpty == false { return "テキスト" }
-        return "空"
+        if pb.canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) { return L("ファイル", "File") }
+        if pb.canReadObject(forClasses: [NSImage.self], options: nil) { return L("画像", "Image") }
+        if pb.string(forType: .string)?.isEmpty == false { return L("テキスト", "Text") }
+        return L("空", "Empty")
     }
 
     @objc private func clearAll() { controller?.removeAll() }
@@ -1149,7 +1150,7 @@ final class ShelfItemView: NSView, NSDraggingSource {
     func refresh() {
         if isMemo {
             memoCard.text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-            nameLabel.stringValue = "メモ"
+            nameLabel.stringValue = L("メモ", "Note")
         } else {
             nameLabel.stringValue = url.lastPathComponent
             imageView.image = ShelfThumbnails.shared.image(for: url, size: Self.thumb) { [weak self] image in
@@ -1214,7 +1215,7 @@ final class MemoCardView: NSView {
         let preview = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let style = NSMutableParagraphStyle()
         style.lineBreakMode = .byCharWrapping
-        ((preview.isEmpty ? "（空）" : String(preview.prefix(48))) as NSString).draw(
+        ((preview.isEmpty ? L("（空）", "(empty)") : String(preview.prefix(48))) as NSString).draw(
             in: r.insetBy(dx: 5, dy: 4),
             withAttributes: [.font: NSFont.systemFont(ofSize: 7.5, weight: .medium),
                              .foregroundColor: NSColor(white: 0.15, alpha: 0.9),
@@ -1314,7 +1315,7 @@ final class ShelfSideButton: NSView {
             stack.centerXAnchor.constraint(equalTo: centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
-        toolTip = "\(title)（\(shortcut)）"
+        toolTip = L("\(title)（\(shortcut)）", "\(title) (\(shortcut))")
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
                                        owner: self, userInfo: nil))
     }

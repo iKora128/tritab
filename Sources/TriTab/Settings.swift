@@ -7,9 +7,9 @@ enum Sensitivity: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .high: return "高い（短いスワイプで反応）"
-        case .medium: return "ふつう"
-        case .low: return "低い（しっかりスワイプ・おすすめ）"
+        case .high: return L("高い（短いスワイプで反応）", "High (reacts to short swipes)")
+        case .medium: return L("ふつう", "Medium")
+        case .low: return L("低い（しっかりスワイプ・おすすめ）", "Low (needs a deliberate swipe; recommended)")
         }
     }
 

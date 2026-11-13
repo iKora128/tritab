@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import TriTabCore
 
 /// 設定画面・はじめての案内を表示する別プロセス（同じ実行ファイルを引数付きで起動する）。
 ///
@@ -74,7 +75,7 @@ final class SettingsProcess: NSObject, NSApplicationDelegate, NSWindowDelegate {
             w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 580),
                          styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                          backing: .buffered, defer: false)
-            w.title = "TriTab 設定"
+            w.title = L("TriTab 設定", "TriTab Settings")
             w.toolbar = NSToolbar()
             w.toolbarStyle = .unified
             w.contentView = NSHostingView(rootView: SettingsView())
@@ -82,7 +83,7 @@ final class SettingsProcess: NSObject, NSApplicationDelegate, NSWindowDelegate {
             w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 680, height: 540),
                          styleMask: [.titled, .closable, .fullSizeContentView],
                          backing: .buffered, defer: false)
-            w.title = "TriTab へようこそ"
+            w.title = L("TriTab へようこそ", "Welcome to TriTab")
             w.titleVisibility = .hidden
             w.titlebarAppearsTransparent = true
             w.isMovableByWindowBackground = true
@@ -105,12 +106,12 @@ final class SettingsProcess: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let main = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "閉じる", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: L("閉じる", "Close"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
         let fileItem = NSMenuItem()
-        let fileMenu = NSMenu(title: "ファイル")
-        fileMenu.addItem(withTitle: "閉じる", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        let fileMenu = NSMenu(title: L("ファイル", "File"))
+        fileMenu.addItem(withTitle: L("閉じる", "Close"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         fileItem.submenu = fileMenu
         main.addItem(fileItem)
         NSApp.mainMenu = main

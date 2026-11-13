@@ -1,4 +1,5 @@
 import AppKit
+import TriTabCore
 
 /// macOS 標準のトラックパッドジェスチャーとの衝突を調べる。
 ///
@@ -33,33 +34,48 @@ enum SystemGestureChecker {
         if fingers == 3 {
             switch value("TrackpadThreeFingerHorizSwipeGesture") {
             case 2:
-                list.append(.init(title: "フルスクリーンアプリケーション間をスワイプ（3本指）",
-                                  fix: "「その他のジェスチャ」で「4本指で左右にスワイプ」に変更", suggestsFourFingerMode: false))
+                list.append(.init(title: L("フルスクリーンアプリケーション間をスワイプ（3本指）",
+                                           "Swipe between full-screen applications (3 fingers)"),
+                                  fix: L("「その他のジェスチャ」で「4本指で左右にスワイプ」に変更",
+                                         "Change to “Swipe Left or Right with Four Fingers” in More Gestures"),
+                                  suggestsFourFingerMode: false))
             case 1:
-                list.append(.init(title: "ページ間をスワイプ（3本指）",
-                                  fix: "「その他のジェスチャ」で「2本指で左右にスクロール」に変更", suggestsFourFingerMode: false))
+                list.append(.init(title: L("ページ間をスワイプ（3本指）", "Swipe between pages (3 fingers)"),
+                                  fix: L("「その他のジェスチャ」で「2本指で左右にスクロール」に変更",
+                                         "Change to “Scroll Left or Right with Two Fingers” in More Gestures"),
+                                  suggestsFourFingerMode: false))
             default: break
             }
             if value("TrackpadThreeFingerVertSwipeGesture") != 0 {
-                list.append(.init(title: "Mission Control / アプリExposé（3本指）",
-                                  fix: "「その他のジェスチャ」で「4本指で上 / 下にスワイプ」に変更", suggestsFourFingerMode: false))
+                list.append(.init(title: L("Mission Control / アプリExposé（3本指）", "Mission Control / App Exposé (3 fingers)"),
+                                  fix: L("「その他のジェスチャ」で「4本指で上 / 下にスワイプ」に変更",
+                                         "Change to “Swipe Up/Down with Four Fingers” in More Gestures"),
+                                  suggestsFourFingerMode: false))
             }
             if value("TrackpadThreeFingerDrag") != 0 {
-                list.append(.init(title: "3本指のドラッグ（アクセシビリティ）",
-                                  fix: "このアプリを「4本指モード」に切り替えるのがおすすめです", suggestsFourFingerMode: true))
+                list.append(.init(title: L("3本指のドラッグ（アクセシビリティ）", "Three Finger Drag (Accessibility)"),
+                                  fix: L("このアプリを「4本指モード」に切り替えるのがおすすめです",
+                                         "We recommend switching TriTab to 4-finger mode"),
+                                  suggestsFourFingerMode: true))
             }
             if value("TrackpadThreeFingerTapGesture") == 2 {
-                list.append(.init(title: "調べる＆データ検出（3本指でタップ）",
-                                  fix: "「ポイントとクリック」で「1本指で強めのクリック」またはオフに変更", suggestsFourFingerMode: false))
+                list.append(.init(title: L("調べる＆データ検出（3本指でタップ）", "Look up & data detectors (tap with 3 fingers)"),
+                                  fix: L("「ポイントとクリック」で「1本指で強めのクリック」またはオフに変更",
+                                         "Change to “Force Click with One Finger” or turn it off in Point & Click"),
+                                  suggestsFourFingerMode: false))
             }
         } else {
             if value("TrackpadFourFingerHorizSwipeGesture") == 2 {
-                list.append(.init(title: "フルスクリーンアプリケーション間をスワイプ（4本指）",
-                                  fix: "「その他のジェスチャ」でオフに変更", suggestsFourFingerMode: false))
+                list.append(.init(title: L("フルスクリーンアプリケーション間をスワイプ（4本指）",
+                                           "Swipe between full-screen applications (4 fingers)"),
+                                  fix: L("「その他のジェスチャ」でオフに変更", "Turn it off in More Gestures"),
+                                  suggestsFourFingerMode: false))
             }
             if value("TrackpadFourFingerVertSwipeGesture") == 2 {
-                list.append(.init(title: "Mission Control / アプリExposé（4本指）",
-                                  fix: "「その他のジェスチャ」でオフに変更（キーボードの F3 などで代用）", suggestsFourFingerMode: false))
+                list.append(.init(title: L("Mission Control / アプリExposé（4本指）", "Mission Control / App Exposé (4 fingers)"),
+                                  fix: L("「その他のジェスチャ」でオフに変更（キーボードの F3 などで代用）",
+                                         "Turn it off in More Gestures (use a key like F3 instead)"),
+                                  suggestsFourFingerMode: false))
             }
         }
         return list

@@ -7,25 +7,25 @@ public enum TabAction: String, CaseIterable, Sendable {
 
     public var label: String {
         switch self {
-        case .nextTab: return "次のタブ"
-        case .prevTab: return "前のタブ"
-        case .closeTab: return "タブを閉じる"
-        case .reopenTab: return "閉じたタブを復元"
-        case .newTab: return "新しいタブ"
-        case .reload: return "再読み込み"
-        case .none: return "なし"
+        case .nextTab: return L("次のタブ", "Next Tab")
+        case .prevTab: return L("前のタブ", "Previous Tab")
+        case .closeTab: return L("タブを閉じる", "Close Tab")
+        case .reopenTab: return L("閉じたタブを復元", "Reopen Closed Tab")
+        case .newTab: return L("新しいタブ", "New Tab")
+        case .reload: return L("再読み込み", "Reload")
+        case .none: return L("なし", "None")
         }
     }
 
     /// HUD 表示用
     public var hudText: String {
         switch self {
-        case .nextTab: return "次のタブ  ›"
-        case .prevTab: return "‹  前のタブ"
-        case .closeTab: return "×  タブを閉じる"
-        case .reopenTab: return "↺  閉じたタブを復元"
-        case .newTab: return "+  新しいタブ"
-        case .reload: return "⟳  再読み込み"
+        case .nextTab: return L("次のタブ  ›", "Next Tab  ›")
+        case .prevTab: return L("‹  前のタブ", "‹  Previous Tab")
+        case .closeTab: return L("×  タブを閉じる", "×  Close Tab")
+        case .reopenTab: return L("↺  閉じたタブを復元", "↺  Reopen Closed Tab")
+        case .newTab: return L("+  新しいタブ", "+  New Tab")
+        case .reload: return L("⟳  再読み込み", "⟳  Reload")
         case .none: return ""
         }
     }
@@ -131,7 +131,7 @@ public struct AppProfile: Equatable, Sendable {
     }
 
     /// 対応表にないアプリ用（「対応アプリ以外でも動かす」を ON にしたときだけ使う）
-    public static let generic = AppProfile(name: "その他のアプリ", next: .ctrlTab, prev: .ctrlShiftTab,
+    public static let generic = AppProfile(name: L("その他のアプリ", "Other Apps"), next: .ctrlTab, prev: .ctrlShiftTab,
                                            close: .cmdW, reopen: .cmdShiftT, new: .cmdT, reload: .cmdR)
 }
 
@@ -156,17 +156,17 @@ public enum AppProfiles {
         add(["com.microsoft.VSCode", "com.microsoft.VSCodeInsiders"], .editor("Visual Studio Code"))
         add(["com.todesktop.230313mzl4w4u92"], .editor("Cursor"))
         add(["com.exafunction.windsurf"], .editor("Windsurf"))
-        add(["com.apple.Terminal"], .terminal("ターミナル"))
+        add(["com.apple.Terminal"], .terminal(L("ターミナル", "Terminal")))
         add(["com.googlecode.iterm2"], .terminal("iTerm2"))
         add(["com.mitchellh.ghostty"], .terminal("Ghostty"))
         // Warp は ⇧⌘T で閉じたタブを復元できる（60 秒以内）
         var warp = AppProfile.terminal("Warp"); warp.reopen = .cmdShiftT
         add(["dev.warp.Warp-Stable"], warp)
         // タブのないチャットアプリ: ⌘W はウィンドウを閉じ、⇧⌘T は別機能（Slack はスレッド画面）なので何もしない
-        add(["com.tinyspeck.slackmacgap"], .disabled("Slack（無効）"))
-        add(["com.hnc.Discord"], .disabled("Discord（無効）"))
+        add(["com.tinyspeck.slackmacgap"], .disabled(L("Slack（無効）", "Slack (disabled)")))
+        add(["com.hnc.Discord"], .disabled(L("Discord（無効）", "Discord (disabled)")))
         // メール: ⌘R は返信、⌘W はメッセージを閉じる
-        add(["com.apple.mail"], .disabled("メール（無効）"))
+        add(["com.apple.mail"], .disabled(L("メール（無効）", "Mail (disabled)")))
         // Finder: 閉じたタブの復元はない
         add(["com.apple.finder"], AppProfile(name: "Finder", next: .ctrlTab, prev: .ctrlShiftTab, close: .cmdW, reopen: nil, new: .cmdT))
         return m
