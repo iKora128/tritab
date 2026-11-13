@@ -1,62 +1,77 @@
 # TriTab
 
-**Three-finger tab control for Mac ／ 3本指で、タブを自在に。**
+**Three-finger tab control for Mac** ／ [日本語](README.ja.md)
 
-> リリースまでの計画は [docs/PLAN.md](docs/PLAN.md)、配布の手順は [docs/RELEASE.md](docs/RELEASE.md) にあります。
+TriTab is a small menu bar app that lets you switch, close, reopen and open browser tabs with trackpad gestures. It's free and open source (MIT).
 
-トラックパッドのジェスチャーでタブを操作する、macOS のメニューバー常駐アプリです。無料で使えます。
-常駐時のメモリは約 11 MB です（実測。BetterTouchTool は約 48 MB）。
+## Install
 
-## タブ操作（既定でオン）
+- **DMG**: download the latest `TriTab-x.y.z.dmg` from [Releases](https://github.com/iKora128/tritab/releases/latest), open it, and drag TriTab to Applications.
+- **Homebrew**: `brew install --cask ikora128/tap/tritab`
 
-| ジェスチャー | 動作 |
+Requires macOS 13 Ventura or later, on Apple silicon or Intel. TriTab is signed with a Developer ID, notarized by Apple, and keeps itself up to date.
+
+## Getting started
+
+1. **Allow Accessibility access**: System Settings › Privacy & Security › Accessibility. TriTab needs it to send keyboard shortcuts.
+2. **Move macOS's three-finger gestures to four fingers**: System Settings › Trackpad › More Gestures. TriTab tells you if anything conflicts.
+3. **If you use Three Finger Drag**, set TriTab to four fingers in Settings.
+
+## Tab gestures (on by default)
+
+| Gesture | Action |
 |---|---|
-| 3本指で左へスワイプ | 次（右）のタブ |
-| 3本指で右へスワイプ | 前（左）のタブ |
-| 3本指で下へスワイプ | タブを閉じる |
-| 3本指で上へスワイプ | 閉じたタブを復元 |
-| 3本指でタップ | 新しいタブ |
-| 3本指でクリック（押し込む） | ⌘+クリック（リンクを新しいタブで開く） |
-| 4本指でクリック | 閉じたタブを復元 |
-| 親指＋2本指でつまむ | 再読み込み |
+| Swipe left with 3 fingers | Next tab (to the right) |
+| Swipe right with 3 fingers | Previous tab (to the left) |
+| Swipe down with 3 fingers | Close tab |
+| Swipe up with 3 fingers | Reopen closed tab |
+| Tap with 3 fingers | New tab |
+| Click (press down) with 3 fingers | ⌘-click (open the link in a new tab) |
+| Click with 4 fingers | Reopen closed tab |
+| Pinch with your thumb and 2 fingers | Reload |
 
-- スワイプ1回につき1回だけ動きます。ゆっくりずれたり、指を置き直したりしただけでは発火しません。
-- 3本指が触れている間は、2本指スクロールによる「戻る／進む」の誤動作を TriTab が止めます。
-- アプリごとにショートカットの違いを切り替えます（例：Arc は ⌘⌥↓、VS Code は ⌘⌥→）。登録のないアプリには ⌃Tab / ⌘W / ⇧⌘T を送ります。
-- ターミナル系のアプリでは「閉じる」と「復元」は動きません。Slack・Discord・メールでは何もしません。
+- One swipe moves one tab. Slow drifts and re-placed fingers don't trigger anything.
+- While three fingers are on the trackpad, TriTab keeps two-finger scrolling from triggering Back / Forward by accident.
+- Shortcuts are adjusted per app (for example ⌘⌥↓ in Arc and ⌘⌥→ in VS Code). Other apps get ⌃Tab / ⌘W / ⇧⌘T.
+- Close and reopen don't work in terminal apps. Slack, Discord and Mail are left alone.
 
-## 便利機能（既定でオフ、設定画面でオン）
+## Extras (off by default, turn on in Settings)
 
-- **⌘単体で英数／かな**：左⌘で英数、右⌘でかな。Karabiner-Elements の定番ルールと同じ動きです。
-- **4本指タップで英数／かなを切り替え**
-- **ノッチの棚**：ファイルをドラッグして少し上へ動かすと、ノッチから棚が出てきて一時置きできます。ノッチにマウスを乗せても開き、開いているあいだは ⌘V でクリップボードの中身（ファイル・画像・テキスト）を置けます。
-- **5本指で上スワイプしてディスプレイをスリープ**
+- **⌘ alone for Eisu / Kana**: left ⌘ switches to Eisu (英数), right ⌘ to Kana (かな), like the popular Karabiner-Elements rule.
+- **Four-finger tap to toggle Eisu / Kana**
+- **Notch Shelf**: drag a file and nudge it upward, and a shelf slides out of the notch to hold it for later. Hovering over the notch opens it too, and while it's open you can paste files, images or text with ⌘V.
+- **Five-finger swipe up to sleep the display**
 
-## 設定
+## Settings
 
-メニューバーのアイコンから「設定…」（⌘,）を開きます。設定画面は別のプロセスで開き、閉じるとそのプロセスごと終了します。SwiftUI のメモリを常駐側に残さないためです。
+Choose Settings… (⌘,) from the menu bar icon. The settings window runs in its own process and quits when you close it, so the always-running part of TriTab stays small.
 
-## 最初にやること
+## Privacy
 
-1. **アクセシビリティを許可する**：システム設定 › プライバシーとセキュリティ › アクセシビリティ
-2. **macOS 標準の3本指ジェスチャーを4本指に移す**：システム設定 › トラックパッド › その他のジェスチャ。競合していれば TriTab が知らせます。
-3. **3本指ドラッグを使っている場合**：設定画面で指の本数を4本にします。
+- TriTab reads trackpad touches and keyboard and mouse events on your Mac only to recognize gestures and shortcuts. Nothing is recorded or sent anywhere.
+- The only network access is the update check. TriTab downloads `https://github.com/iKora128/tritab/releases/latest/download/appcast.xml` once a day if you allow automatic checks (it asks on the second launch), or when you choose Check for Updates…. There is no analytics and no system profiling.
+- Your data stays on your Mac: settings in `~/Library/Preferences/io.github.ikora128.TriTab.plist`, Notch Shelf memos in `~/Library/Application Support/io.github.ikora128.TriTab`, and temporary shelf files in `~/Library/Caches/io.github.ikora128.TriTab`.
 
-## ビルド
+## Build from source
 
 ```sh
-./scripts/setup-dev-signing.sh    # 初回だけ。開発用の署名証明書を専用キーチェーンに作る
-./scripts/test.sh                 # テスト
-./scripts/build-app.sh --install  # ビルドして /Applications に入れて起動
-TRITAB_DEBUG=1 /Applications/TriTab.app/Contents/MacOS/TriTab  # ログを出しながら起動
+./scripts/setup-dev-signing.sh    # once: creates a self-signed development certificate in its own keychain
+./scripts/test.sh                 # run the tests
+./scripts/build-app.sh --install  # build, copy to /Applications and launch
+TRITAB_DEBUG=1 /Applications/TriTab.app/Contents/MacOS/TriTab  # launch with logging
 ```
 
-Xcode は不要で、Command Line Tools だけでビルドできます。開発用の証明書で署名すると、ビルドし直してもアクセシビリティの許可が外れません。
+The Command Line Tools are enough; Xcode isn't required. With the development certificate, Accessibility access survives rebuilds. Release steps are in [docs/RELEASE.md](docs/RELEASE.md) (Japanese).
 
-## 仕組み
+## How it works
 
-- **タッチの読み取り**：非公開の `MultitouchSupport.framework` を `dlopen` で読み込みます（`Sources/MTBridge`）。
-- **ジェスチャーの判定**：`Sources/TriTabCore/GestureEngine.swift`。UI に依存しない純粋なロジックで、テストがあります。
-- **クリックとキー入力**：CGEventTap で処理します。⌘クリック、⌘単体の英かな、スクロールの抑止を受け持ちます。
-- **キーの送信**：CGEvent を使います。
-- **配布**：非公開 API を使うため、Mac App Store では配布できません。
+- **Reading touches**: the private `MultitouchSupport.framework`, loaded with `dlopen` (`Sources/MTBridge`).
+- **Recognizing gestures**: `Sources/TriTabCore/GestureEngine.swift`, pure logic with tests.
+- **Clicks and keys**: a CGEventTap handles ⌘-click, ⌘ alone for Eisu / Kana, and scroll suppression.
+- **Sending shortcuts**: CGEvent.
+- **Updates**: [Sparkle](https://sparkle-project.org), with EdDSA-signed updates and a signed update feed.
+- Because it uses a private framework, TriTab can't be on the Mac App Store, and a macOS update may break it until TriTab is updated.
+
+## License
+
+[MIT](LICENSE)

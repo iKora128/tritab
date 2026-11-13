@@ -6,14 +6,16 @@ cask "tritab" do
 
   url "https://github.com/iKora128/tritab/releases/download/v#{version}/TriTab-#{version}.zip"
   name "TriTab"
-  desc "Three-finger tab control for Mac"
-  homepage "https://tritab.app"
+  desc "Control browser tabs with three-finger trackpad gestures"
+  homepage "https://github.com/iKora128/tritab"
 
   livecheck do
     url :url
     strategy :github_latest
   end
 
+  # アプリ自身が Sparkle で更新する
+  auto_updates true
   depends_on macos: ">= :ventura"
 
   app "TriTab.app"
@@ -23,6 +25,7 @@ cask "tritab" do
   zap trash: [
     "~/Library/Application Support/io.github.ikora128.TriTab",
     "~/Library/Caches/io.github.ikora128.TriTab",
+    "~/Library/HTTPStorages/io.github.ikora128.TriTab",
     "~/Library/Preferences/io.github.ikora128.TriTab.plist",
   ]
 end

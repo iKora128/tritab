@@ -29,6 +29,14 @@
 	<string>13.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/iKora128/tritab/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>uRYb5xXCSNXrUucEBrocKabFAi8U87GAaCVYVYZhWwE=</string>
+	<key>SURequireSignedFeed</key>
+	<true/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Daichi Nagashima. MIT License.</string>
 </dict>

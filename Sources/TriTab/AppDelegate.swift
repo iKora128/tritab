@@ -1,5 +1,6 @@
 import AppKit
 import QuickLookUI
+import Sparkle
 import TriTabCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
@@ -17,9 +18,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var appliedConfig: GestureEngine.Config?
     private var appliedFingers: Int?
     private var shelfEnabled = false
+    /// 自動アップデート（Sparkle）。更新情報の場所と公開鍵は Info.plist の SUFeedURL / SUPublicEDKey
+    private var updater: SPUStandardUpdaterController!
+    /// 見つかったけれど、まだ見てもらっていない新しい版。メニューの先頭で控えめに知らせる
+    private var pendingUpdate: String?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Migration.runIfNeeded()
+        updater = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: self)
+        // .app として起動したときだけ動かす（swift run などで直接起動すると Info.plist の設定がないため）
+        if Bundle.main.bundleURL.pathExtension == "app" { updater.startUpdater() }
         activity = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiatedAllowingIdleSystemSleep, .latencyCritical],
             reason: "トラックパッドのジェスチャーにすぐ反応するため")
@@ -34,8 +42,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         touch.onGesture = { [weak self] event in self?.handle(event) }
         touch.log("起動: アクセシビリティ許可=\(KeySender.isTrusted) bundle=\(Bundle.main.bundleIdentifier ?? "-") dryRun=\(dryRun)")
         if !touch.start() {
-            showAlert(title: "トラックパッドを読み取れませんでした",
-                      message: "MultitouchSupport.framework を読み込めませんでした。macOS のバージョンを確認してください。")
+            showAlert(title: L("トラックパッドを読み取れませんでした", "Couldn't Read the Trackpad"),
+                      message: L("MultitouchSupport.framework を読み込めませんでした。macOS のバージョンを確認してください。",
+                                 "MultitouchSupport.framework couldn't be loaded. Please check your macOS version."))
         }
 
         input.decideClick = { [weak self] in self?.decideClick() ?? .passThrough }
@@ -119,7 +128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             perform(.newTab)
         case .tap(let fingers) where fingers == n + 1 && settings.imeTap:
             IMESwitcher.toggle()
-            feedback(IMESwitcher.currentIsASCII ? "あ  かな" : "A  英数")
+            feedback(IMESwitcher.currentIsASCII ? L("あ  かな", "あ  Kana") : L("A  英数", "A  Eisu"))
         case .pinchIn(3) where settings.pinchReload:
             perform(.reload)
         default:
@@ -150,17 +159,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let profile = AppProfiles.profile(for: bundleID) ?? (settings.allApps ? AppProfile.generic : nil)
         guard let profile, let combo = profile.combo(for: action) else {
             touch.log("\(bundleID ?? "?") では \(action.rawValue) を送りません")
-            hud("このアプリでは無効")
+            hud(L("このアプリでは無効", "Disabled in this app"))
             return
         }
         guard KeySender.isTrusted else {
             touch.log("アクセシビリティ未許可のため送信できません")
-            hud("アクセシビリティを許可してください")
+            hud(L("アクセシビリティを許可してください", "Please allow Accessibility access"))
             return
         }
         if dryRun {
             touch.log("dry-run: \(action.rawValue) を送るはず")
-            hud("検出: \(action.hudText)")
+            hud(L("検出: \(action.hudText)", "Detected: \(action.hudText)"))
             return
         }
         KeySender.send(combo)
@@ -182,7 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func sleepDisplay() {
-        guard !dryRun else { hud("検出: ディスプレイをスリープ"); return }
+        guard !dryRun else { hud(L("検出: ディスプレイをスリープ", "Detected: Sleep Display")); return }
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
         p.arguments = ["displaysleepnow"]
@@ -194,28 +203,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
 
-        menu.addItem(item("TriTab を有効にする", checked: settings.enabled) { [unowned self] in
+        if let pendingUpdate {
+            menu.addItem(item(L("TriTab \(pendingUpdate) にアップデート…", "Update to TriTab \(pendingUpdate)…")) { [unowned self] in
+                checkForUpdates()
+            })
+            menu.addItem(.separator())
+        }
+
+        menu.addItem(item(L("TriTab を有効にする", "Enable TriTab"), checked: settings.enabled) { [unowned self] in
             settings.enabled.toggle()
         })
 
         // 警告（あるときだけ）
         var warnings: [NSMenuItem] = []
         if !KeySender.isTrusted {
-            warnings.append(item("⚠︎ アクセシビリティの許可が必要です…") {
+            warnings.append(item(L("⚠︎ アクセシビリティの許可が必要です…", "⚠︎ Accessibility Access Required…")) {
                 KeySender.requestTrust()
             })
         }
         let conflicts = SystemGestureChecker.conflicts(fingers: settings.fingers)
         if !conflicts.isEmpty {
-            warnings.append(item("⚠︎ macOS のジェスチャーと競合しています（\(conflicts.count)件）…") { [unowned self] in
+            warnings.append(item(L("⚠︎ macOS のジェスチャーと競合しています（\(conflicts.count)件）…",
+                                   "⚠︎ Conflicts with macOS Gestures (\(conflicts.count))…")) { [unowned self] in
                 showConflicts(conflicts)
             })
         }
         if !NSRunningApplication.runningApplications(withBundleIdentifier: "com.hegenberg.BetterTouchTool").isEmpty {
-            warnings.append(disabled("⚠︎ BetterTouchTool が起動中です（同じジェスチャーが二重に動く可能性）"))
+            warnings.append(disabled(L("⚠︎ BetterTouchTool が起動中です（同じジェスチャーが二重に動く可能性）",
+                                       "⚠︎ BetterTouchTool is running (gestures may fire twice)")))
         }
         if touch.isLoaded && touch.deviceCount == 0 {
-            warnings.append(disabled("⚠︎ トラックパッドが見つかりません"))
+            warnings.append(disabled(L("⚠︎ トラックパッドが見つかりません", "⚠︎ No Trackpad Found")))
         }
         if !warnings.isEmpty {
             menu.addItem(.separator())
@@ -223,11 +241,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
-        let prefs = item("設定…") { SettingsProcess.open(.settings) }
+        let prefs = item(L("設定…", "Settings…")) { SettingsProcess.open(.settings) }
         prefs.keyEquivalent = ","
         menu.addItem(prefs)
+        menu.addItem(item(L("アップデートを確認…", "Check for Updates…")) { [unowned self] in checkForUpdates() })
         menu.addItem(.separator())
-        menu.addItem(item("TriTab を終了") { NSApp.terminate(nil) })
+        menu.addItem(item(L("TriTab を終了", "Quit TriTab")) { NSApp.terminate(nil) })
+    }
+
+    /// 更新を確認する。新しい版がすでに見つかっていれば、その画面を前に出す
+    private func checkForUpdates() {
+        NSApp.activate(ignoringOtherApps: true)
+        updater.checkForUpdates(nil)
     }
 
     /// 設定（UserDefaults）を各機能に反映する。設定画面・メニューのどちらから変えても、ここを通る
@@ -272,21 +297,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - ダイアログ
 
     private func showConflicts(_ conflicts: [GestureConflict]) {
-        let finger = settings.fingers == 3 ? "3本指" : "4本指"
-        let lines = conflicts.map { "・\($0.title)\n　→ \($0.fix)" }.joined(separator: "\n\n")
+        let n = settings.fingers
+        let lines = conflicts.map { L("・\($0.title)\n　→ \($0.fix)", "• \($0.title)\n   → \($0.fix)") }.joined(separator: "\n\n")
         let alert = NSAlert()
-        alert.messageText = "macOS の\(finger)ジェスチャーと競合しています"
-        alert.informativeText = """
+        alert.messageText = L("macOS の\(n)本指ジェスチャーと競合しています", "Conflicts with macOS \(n)-Finger Gestures")
+        alert.informativeText = L("""
         macOS 側のジェスチャーも同時に動いてしまうため、次の設定を変更してください。
 
         \(lines)
 
         場所：システム設定 › トラックパッド › その他のジェスチャ
-        """
-        alert.addButton(withTitle: "トラックパッド設定を開く")
+        """, """
+        The macOS gestures would fire at the same time as TriTab's, so please change these settings:
+
+        \(lines)
+
+        Location: System Settings › Trackpad › More Gestures
+        """)
+        alert.addButton(withTitle: L("トラックパッド設定を開く", "Open Trackpad Settings"))
         let suggestsFour = settings.fingers == 3 && conflicts.contains { $0.suggestsFourFingerMode }
-        if suggestsFour { alert.addButton(withTitle: "4本指モードにする") }
-        alert.addButton(withTitle: "あとで")
+        if suggestsFour { alert.addButton(withTitle: L("4本指モードにする", "Use 4-Finger Mode")) }
+        alert.addButton(withTitle: L("あとで", "Not Now"))
 
         NSApp.activate(ignoringOtherApps: true)
         switch alert.runModal() {
@@ -334,6 +365,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 private extension Settings {
     /// ⌘ 英かなは、TriTab 全体が有効なときだけ動かす
     var imeCommandActive: Bool { enabled && imeCmd }
+}
+
+// MARK: - 自動アップデートの知らせ方
+//
+// TriTab はメニューバーに常駐していて前面に出ないので、定期確認で新しい版が見つかっても、
+// いきなり更新の画面を前に出さない。起動直後など「いま見せてよい」ときだけ Sparkle に画面を出してもらい、
+// それ以外はメニューの先頭に「TriTab x.y.z にアップデート…」を出して、押されたら画面を出す。
+// https://sparkle-project.org/documentation/gentle-reminders
+extension AppDelegate: SPUStandardUserDriverDelegate {
+    var supportsGentleScheduledUpdateReminders: Bool { true }
+
+    func standardUserDriverShouldHandleShowingScheduledUpdate(_ update: SUAppcastItem,
+                                                              andInImmediateFocus immediateFocus: Bool) -> Bool {
+        immediateFocus
+    }
+
+    func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem,
+                                                   state: SPUUserUpdateState) {
+        if !handleShowingUpdate { pendingUpdate = update.displayVersionString }
+    }
+
+    func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
+        pendingUpdate = nil
+    }
+
+    func standardUserDriverWillFinishUpdateSession() {
+        pendingUpdate = nil
+    }
 }
 
 /// クロージャで動くメニュー項目

@@ -30,21 +30,34 @@ echo "==> ビルド (x86_64)"
 swift build -c release --arch x86_64 >/dev/null
 
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 lipo -create \
   .build/arm64-apple-macosx/release/TriTab \
   .build/x86_64-apple-macosx/release/TriTab \
   -output "$APP/Contents/MacOS/TriTab"
+
+# 自動アップデート（Sparkle）。SwiftPM が取ってきたユニバーサル版をそのまま入れる
+FW="$APP/Contents/Frameworks/Sparkle.framework"
+ditto .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework "$FW"
+# XPC サービスはサンドボックスのアプリ用（Info.plist で有効にしない限り使われない）。ヘッダーは実行に不要
+for d in XPCServices Headers PrivateHeaders Modules; do rm -rf "$FW/$d" "$FW/Versions/B/$d"; done
 
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 sed -e "s/__BUNDLE_ID__/$BUNDLE_ID/" -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD/" \
   Resources/Info.plist > "$APP/Contents/Info.plist"
 
 echo "==> 署名 (${SIGN_IDENTITY})"
-# 配布用（Developer ID）は公証のために安全なタイムスタンプが必要。開発用は不要
-if [[ "$SIGN_IDENTITY" == Developer\ ID* ]]; then TIMESTAMP=--timestamp; else TIMESTAMP=--timestamp=none; fi
-codesign --force --options runtime $TIMESTAMP --sign "$SIGN_IDENTITY" "$APP"
-codesign --verify --strict "$APP"
+# 配布用（Developer ID）は、公証のために Hardened Runtime と安全なタイムスタンプを付ける。
+# 開発用（ad-hoc・自己署名）には付けない。チーム ID がない署名では、Hardened Runtime が
+# Sparkle.framework の読み込みを拒否するため（different Team IDs）
+if [[ "$SIGN_IDENTITY" == Developer\ ID* ]]; then SIGN_OPTS=(--options runtime --timestamp); else SIGN_OPTS=(--timestamp=none); fi
+sign() { codesign --force "${SIGN_OPTS[@]}" --sign "$SIGN_IDENTITY" "$@"; }
+# 内側から順に署名する（Sparkle は署名なしで配られているので、ここで自分の証明書で署名し直す）
+sign "$FW/Versions/B/Autoupdate"
+sign "$FW/Versions/B/Updater.app"
+sign "$FW"
+sign "$APP"
+codesign --verify --deep --strict "$APP"
 
 lipo -info "$APP/Contents/MacOS/TriTab"
 echo "==> $APP"
