@@ -1,0 +1,13 @@
+.build/
+build/
+.swiftpm/
+*.xcodeproj/
+.DS_Store
+
+# 調査メモ（ローカルのみ）
+research_notes/
+reports/
+# 別作業の Rust ツール（このアプリとは無関係）
+Cargo.toml
+Cargo.lock
+src/
