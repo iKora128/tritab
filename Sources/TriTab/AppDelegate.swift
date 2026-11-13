@@ -40,7 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateIcon()
 
         touch.onGesture = { [weak self] event in self?.handle(event) }
-        touch.log("起動: アクセシビリティ許可=\(KeySender.isTrusted) bundle=\(Bundle.main.bundleIdentifier ?? "-") dryRun=\(dryRun)")
+        touch.log("起動: アクセシビリティ許可=\(KeySender.isTrusted) bundle=\(Bundle.main.bundleIdentifier ?? "-") dryRun=\(dryRun) "
+                  + "言語=\(Lang.isJapanese ? "ja" : "en") バンドルの言語=\(Bundle.main.preferredLocalizations)")
         if !touch.start() {
             showAlert(title: L("トラックパッドを読み取れませんでした", "Couldn't Read the Trackpad"),
                       message: L("MultitouchSupport.framework を読み込めませんでした。macOS のバージョンを確認してください。",
