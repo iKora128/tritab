@@ -127,7 +127,8 @@ xmllint --noout "$APPCAST"
 
 ZIP_SHA=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)
 # Homebrew の cask を、このバージョンの値で書き出す（tap リポジトリにコピーして使う）
-sed -e "s/__VERSION__/$VERSION/" -e "s/__SHA256__/$ZIP_SHA/" packaging/homebrew/tritab.rb > "$OUT/tritab.rb"
+# 先頭の「ひな形」の説明コメント（2 行）は外す
+sed -e '1,2{/^#/d;}' -e "s/__VERSION__/$VERSION/" -e "s/__SHA256__/$ZIP_SHA/" packaging/homebrew/tritab.rb > "$OUT/tritab.rb"
 
 echo "==> できあがり"
 ls -lh "$OUT"

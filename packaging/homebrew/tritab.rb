@@ -14,7 +14,7 @@ cask "tritab" do
     strategy :github_latest
   end
 
-  # アプリ自身が Sparkle で更新する
+  # TriTab updates itself with Sparkle
   auto_updates true
   depends_on macos: ">= :ventura"
 

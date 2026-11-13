@@ -16,16 +16,18 @@ TriTab — Three-finger tab control for Mac / 3本指で、タブを自在に。
 - **見た目**: アプリアイコン（夕焼け＋ノッチの棚）、メニューバーのアイコン（M4）
 - **軽さ**: 常駐時のメモリは約 13 MB（Sparkle を入れる前は約 11 MB）
 - **品質**: テスト 31 件（ジェスチャー判定・アプリ別のキー対応）
-- **配布の準備**: リリース用スクリプト（`scripts/release.sh`）、Homebrew の cask のひな形、リリース手順書（`docs/RELEASE.md`）
+- **言語**: 日本語と英語（macOS の言語設定で切り替わる）
+- **配布**: v0.1.0 を公開（2026-11-13）。Developer ID で署名・公証済みの DMG と ZIP を GitHub Releases に置き、Homebrew（`brew install --cask ikora128/tap/tritab`）でも入れられる。Sparkle で自動アップデート
 
 ## フェーズ 1: 仕上げ（公開前に必ずやる）
 
-- [ ] **英語対応**。いまは画面がすべて日本語なので、OSS として海外の人も使えるよう英語を用意する（日本語環境では日本語のまま）
-- [ ] **README を英語と日本語の 2 本立てにする**。一番上に一言説明・スクリーンショット・動画（GIF）を置く
-- [ ] **ライセンスを決めて `LICENSE` を置く**（おすすめは MIT）
+- [x] **英語対応**。いまは画面がすべて日本語なので、OSS として海外の人も使えるよう英語を用意する（日本語環境では日本語のまま）
+- [x] **README を英語と日本語の 2 本立てにする**（`README.md` と `README.ja.md`）
+- [ ] **README の一番上にスクリーンショットと動画（GIF）を置く**
+- [x] **ライセンスを決めて `LICENSE` を置く**（MIT）
 - [ ] **商標を確認する**: 「TriTab」で J-PlatPat（日本）と USPTO（米国）を検索する
 - [ ] **ドメイン tritab.app を取得する**
-- [ ] **プライバシーの説明を書く**: キー入力やタッチの内容をどこにも送らないこと、通信しないことを明記する
+- [x] **プライバシーの説明を書く**: キー入力やタッチの内容をどこにも送らないこと、通信はアップデートの確認だけであることを README に明記した
 - [ ] **新しいユーザーで初回起動を通しで確認する**: macOS に別ユーザーを作り、案内画面 → 許可 → 試してみよう、を確かめる
 - [ ] **いろいろな環境で確認する**:
   - [ ] 外付けの Magic Trackpad
@@ -40,20 +42,21 @@ TriTab — Three-finger tab control for Mac / 3本指で、タブを自在に。
 
 手順の詳細は `docs/RELEASE.md` にあります。
 
-- [ ] 母艦に clone する
-- [ ] Developer ID Application の証明書を作る
-- [ ] `notarytool` の認証情報を保存する
-- [ ] `./scripts/release.sh 0.1.0` で署名・公証済みの DMG と ZIP を作る
-- [ ] 別の Mac（またはダウンロードし直したもの）で、警告なしで開けることを確認する
-- [ ] Homebrew の tap（`iKora128/homebrew-tap`）を作り、cask を置く
-- [ ] **自動アップデート（Sparkle）を入れる**: 更新情報（appcast）は tritab.app か GitHub Pages に置く。署名鍵（EdDSA）を作る
+- [x] 母艦に clone する
+- [x] Developer ID Application の証明書を作る（もともとあった。2031-01-17 まで有効）
+- [x] `notarytool` の認証情報を保存する（App Store Connect の API キー。プロファイル名 TriTab）
+- [x] `./scripts/release.sh 0.1.0` で署名・公証済みの DMG と ZIP を作る
+- [ ] 別の Mac（またはダウンロードし直したもの）で、警告なしで開けることを確認する（公開 URL から落とし直したものは `spctl` で「Notarized Developer ID」と確認済み。実機で開くのは未）
+- [x] Homebrew の tap（`iKora128/homebrew-tap`）を作り、cask を置く
+- [x] **自動アップデート（Sparkle）を入れる**: 更新情報（appcast）は GitHub Releases の最新リリースに添付する。署名鍵（EdDSA）はログインキーチェーンの「tritab」
+- [ ] Sparkle の秘密鍵をパスワードマネージャーにバックアップする（`docs/RELEASE.md` の手順 3）
 - [ ] （あとで）GitHub Actions でリリースを自動化する（証明書と公証の情報を Secrets に入れる）
 
 ## フェーズ 3: 公開
 
-- [ ] リポジトリを公開（Public）に切り替える
+- [x] リポジトリを公開（Public）に切り替える（2026-11-13）
 - [ ] 紹介ページを tritab.app に置く（GitHub Pages ＋ 独自ドメイン）。日本語と英語
-- [ ] v0.1.0 を GitHub Releases で公開する
+- [x] v0.1.0 を GitHub Releases で公開する（2026-11-13）
 - [ ] 告知する:
   - [ ] X（動画つき）
   - [ ] Qiita / Zenn の記事（「BetterTouchTool の 3本指タブ操作を単体アプリにした」）
@@ -84,7 +87,10 @@ TriTab — Three-finger tab control for Mac / 3本指で、タブを自在に。
 | 一言説明 | Three-finger tab control for Mac ／ 3本指で、タブを自在に。 |
 | バンドル ID | io.github.ikora128.TriTab |
 | ドメイン | tritab.app（未取得） |
-| リポジトリ | github.com/iKora128/tritab（いまは非公開） |
+| リポジトリ | github.com/iKora128/tritab（公開） |
+| ライセンス | MIT |
+| 配布 | GitHub Releases（DMG・ZIP）と Homebrew の tap（`ikora128/tap/tritab`） |
+| アップデート | Sparkle。更新情報は `https://github.com/iKora128/tritab/releases/latest/download/appcast.xml` |
 | アイコン | 夕焼けグラデーション ＋ 黒いノッチの棚 ＋ 3本指（`docs/design/app-icon.png`） |
 | メニューバーのアイコン | 画面の枠 ＋ ノッチ ＋ 指（`docs/design/menubar-icons.png` の M4） |
 | 配色 | 案 B：背景は macOS 標準、アクセントだけ夕焼け（`docs/design/settings-colors.html`） |
