@@ -43,9 +43,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         touch.log("起動: アクセシビリティ許可=\(KeySender.isTrusted) bundle=\(Bundle.main.bundleIdentifier ?? "-") dryRun=\(dryRun) "
                   + "言語=\(Lang.isJapanese ? "ja" : "en") バンドルの言語=\(Bundle.main.preferredLocalizations)")
         if !touch.start() {
-            showAlert(title: L("トラックパッドを読み取れませんでした", "Couldn't Read the Trackpad"),
+            showAlert(title: L("トラックパッドを読み取れませんでした", "Couldn’t Read the Trackpad"),
                       message: L("MultitouchSupport.framework を読み込めませんでした。macOS のバージョンを確認してください。",
-                                 "MultitouchSupport.framework couldn't be loaded. Please check your macOS version."))
+                                 "MultitouchSupport.framework couldn’t be loaded. Please check your macOS version."))
         }
 
         input.decideClick = { [weak self] in self?.decideClick() ?? .passThrough }
@@ -309,7 +309,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         場所：システム設定 › トラックパッド › その他のジェスチャ
         """, """
-        The macOS gestures would fire at the same time as TriTab's, so please change these settings:
+        The macOS gestures would fire at the same time as TriTab’s, so please change these settings:
 
         \(lines)
 
@@ -318,7 +318,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.addButton(withTitle: L("トラックパッド設定を開く", "Open Trackpad Settings"))
         let suggestsFour = settings.fingers == 3 && conflicts.contains { $0.suggestsFourFingerMode }
         if suggestsFour { alert.addButton(withTitle: L("4本指モードにする", "Use 4-Finger Mode")) }
-        alert.addButton(withTitle: L("あとで", "Not Now"))
+        alert.addButton(withTitle: L("あとで", "Later"))
 
         NSApp.activate(ignoringOtherApps: true)
         switch alert.runModal() {

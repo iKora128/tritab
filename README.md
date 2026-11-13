@@ -3,6 +3,7 @@
 **Three-finger tab control for Mac** ／ [日本語](README.ja.md)
 
 TriTab is a small menu bar app that lets you switch, close, reopen and open browser tabs with trackpad gestures. It's free and open source (MIT).
+It uses about 13 MB of memory while running (BetterTouchTool: about 48 MB).
 
 ## Install
 

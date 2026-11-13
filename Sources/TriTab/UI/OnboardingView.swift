@@ -166,7 +166,7 @@ private struct WelcomePage: View {
                         detail: L("\(fingers)本指クリックでリンクを新しいタブで開く。", "Click with \(fingers) fingers to open a link in a new tab."))
                 Feature(symbol: "leaf.fill", color: Sunset.violet,
                         title: L("軽い", "Lightweight"),
-                        detail: L("常駐しても約 11 MB。設定画面は開いたときだけ。", "About 11 MB in the background. Settings load only when opened."))
+                        detail: L("常駐しても約 13 MB。設定画面は開いたときだけ。", "About 13 MB in the background. Settings load only when opened."))
             }
             .padding(.top, 10)
         }

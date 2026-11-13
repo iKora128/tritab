@@ -5,7 +5,7 @@ import TriTabCore
 /// 設定画面・はじめての案内を表示する別プロセス（同じ実行ファイルを引数付きで起動する）。
 ///
 /// SwiftUI は一度読み込むと、ウィンドウを閉じてもメモリ（約 25MB）を手放さない。
-/// 常駐プロセスを 11MB 前後に保つため、画面は別プロセスで開き、閉じたら終了する。
+/// 常駐プロセスを 13MB 前後に保つため、画面は別プロセスで開き、閉じたら終了する。
 /// 値は同じ UserDefaults（同じバンドル ID）に書き、変更を分散通知で常駐側に知らせる。
 final class SettingsProcess: NSObject, NSApplicationDelegate, NSWindowDelegate {
     enum Mode: String {
