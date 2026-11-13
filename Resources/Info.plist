@@ -3,7 +3,12 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>ja</string>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ja</string>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>TriTab</string>
 	<key>CFBundleIconFile</key>
@@ -25,6 +30,6 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Free software</string>
+	<string>© 2026 Daichi Nagashima. MIT License.</string>
 </dict>
 </plist>
