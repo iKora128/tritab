@@ -10,12 +10,13 @@
 #                  なければ ad-hoc 署名（ビルドのたびにアクセシビリティの再許可が必要）
 #   BUNDLE_ID      既定: io.github.ikora128.TriTab
 #   VERSION        既定: 0.1.0
+#   BUILD          ビルド番号（CFBundleVersion。Sparkle はこれで新旧を比べる）。既定: いまの日時（例 202611132130）
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BUNDLE_ID=${BUNDLE_ID:-io.github.ikora128.TriTab}
 VERSION=${VERSION:-0.1.0}
-BUILD=$(date +%Y%m%d%H%M)
+BUILD=${BUILD:-$(date +%Y%m%d%H%M)}
 DEV_KC=$HOME/.swiper-dev/swiper-dev.keychain-db
 if [[ -z "${SIGN_IDENTITY:-}" && -f "$DEV_KC" ]]; then
   security unlock-keychain -p swiper-dev "$DEV_KC"
