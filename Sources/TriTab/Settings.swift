@@ -53,6 +53,7 @@ final class Settings {
             "imeTap": Self.usesJapaneseInput,
             "shelf": false,
             "shelfAnimation": "jelly",
+            "shelfDropMode": ShelfDropMode.reference.rawValue,
             "didOnboard": false,
         ])
     }
@@ -127,6 +128,12 @@ final class Settings {
 
     var shelfAnimation: ShelfAnimationStyle {
         ShelfAnimationStyle(rawValue: d.string(forKey: "shelfAnimation") ?? "") ?? .jelly
+    }
+
+    /// 棚に置くときの置き方（参照 / コピー）。棚の上の帯のスイッチでも切り替わる
+    var shelfDropMode: ShelfDropMode {
+        get { ShelfDropMode(rawValue: d.string(forKey: "shelfDropMode") ?? "") ?? .reference }
+        set { d.set(newValue.rawValue, forKey: "shelfDropMode") }
     }
 
     /// 日本語を使っている人か（表示言語が日本語、または日本語の入力ソースが有効）

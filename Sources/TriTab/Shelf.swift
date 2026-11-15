@@ -92,8 +92,9 @@ fileprivate enum Curve {
 /// ノッチの棚。
 ///
 /// - ファイルをドラッグして少し上へ動かすと、ノッチから顔を出す。上端に近づくと開く。棚の上で待つとさらに広がる
-/// - ドラッグ中の棚は左右 2 つの受け口に分かれる。左に落とすとコピー（棚に複製。元はそのまま）、右に落とすと参照（元の場所のまま）
-/// - ノッチにマウスを乗せる / クリックしても開く。開いているあいだ ⌘V で貼り付け（ファイルはコピー、⌘⌥V なら参照）、⌘N で新しいメモ
+/// - 置き方（参照 / コピー）は棚の上の帯のスイッチ（設定と同じ値）で決める。ドラッグ中に ⌥ でコピー、⌘⌥ で参照にもできる。
+///   一度に複数を置いたら、1 つのまとめにする（Yoink のスタックと同じ。右クリックで 1 つずつに分けられる）
+/// - ノッチにマウスを乗せる / クリックしても開く。開いているあいだ ⌘V で貼り付け（ファイルはスイッチの置き方）、⌘N で新しいメモ
 /// - 項目にマウスを乗せてスペースで Quick Look。画像や PDF はサムネイルで見せる
 /// - ⌘クリック・⇧クリック・⌘A で選び、まとめてドラッグできる。右クリックで「Finder で表示」など（ShelfActions.swift）
 /// - 中身は再起動しても戻る（ShelfLibrary）。空で閉じたらウィンドウごと破棄してメモリを返す
@@ -123,10 +124,16 @@ final class ShelfController: NSObject {
     private var largeWork: DispatchWorkItem?
     /// 棚から外へドラッグしている最中
     var draggingOut = false
-    /// ほかのアプリからファイルを持ってきている最中（棚を左右 2 つの受け口にする）
+    /// ほかのアプリからファイルを持ってきている最中（棚を受け口にする）
     private(set) var receivingDrag = false {
         didSet { if receivingDrag != oldValue { panel?.receivingDragChanged() } }
     }
+    /// 置くときの置き方（棚の上の帯のスイッチと、設定で切り替える）
+    var dropMode: ShelfDropMode = .reference {
+        didSet { if dropMode != oldValue { panel?.dropModeChanged() } }
+    }
+    /// 棚のスイッチで置き方を変えたとき（設定に書き戻す）
+    var onDropModeChange: ((ShelfDropMode) -> Void)?
     /// 右クリックメニューを開いているあいだ（棚を閉じない）
     var menuOpen = false
     /// マウスが乗っている項目（スペースで Quick Look する対象）
@@ -136,6 +143,8 @@ final class ShelfController: NSObject {
     let library = ShelfLibrary(directory: ShelfController.shelfDirectory, memoDirectory: ShelfController.memoDirectory)
     /// 参照からコピーへ切り替えている途中の項目の、切り替える前（失敗したら戻す。終わるまでは参照のまま保存する）
     private var conversions: [UUID: ShelfItem] = [:]
+    /// コピーを作っている途中の項目: 項目の id → まだ終わっていないファイルと、失敗したファイル
+    private var copyJobs: [UUID: (pending: Set<UUID>, failed: Set<UUID>)] = [:]
 
     private override init() {
         super.init()
@@ -248,24 +257,36 @@ final class ShelfController: NSObject {
 
     // MARK: 中身
 
-    /// ファイルを棚に置く。コピーは棚の中に複製を作り（作り終わるまで印を出す）、参照は元のファイルを指すだけ
+    /// ファイルを棚に置く。一度に 2 つ以上を置いたら、1 つのまとめにする（Yoink のスタックと同じ）。
+    /// コピーは棚の中に複製を作り（作り終わるまで印を出す）、参照は元のファイルを指すだけ
     func add(_ urls: [URL], as mode: ShelfDropMode) {
-        var added: [ShelfItem] = []
+        var files: [ShelfItem] = []
+        var sources: [UUID: URL] = [:]
         for url in urls {
             switch mode {
             case .reference:
-                // 同じファイルの参照がもうあれば足さない
+                // 1 つだけ置くときは、同じファイルの参照がもうあれば足さない
                 let path = url.standardizedFileURL.path
-                guard !(items + added).contains(where: { $0.kind == .reference && $0.url.standardizedFileURL.path == path })
-                else { continue }
-                added.append(library.reference(to: url))
+                if urls.count == 1, items.contains(where: { !$0.isGroup && $0.kind == .reference && $0.url.standardizedFileURL.path == path }) {
+                    continue
+                }
+                files.append(library.reference(to: url))
             case .copy:
-                let item = library.plannedCopy(of: url)
-                added.append(item)
-                startCopy(item, from: url)
+                let file = library.plannedCopy(of: url)
+                files.append(file)
+                sources[file.id] = url
             }
         }
-        insert(added)
+        guard !files.isEmpty else { return }
+        let item = ShelfItem.group(files)
+        if !sources.isEmpty { startCopies(item, sources: sources) }
+        insert([item])
+    }
+
+    /// 棚のスイッチで置き方を変えた
+    func switchDropMode(to mode: ShelfDropMode) {
+        dropMode = mode
+        onDropModeChange?(mode)
     }
 
     /// 棚に落とされた（ShelfStage から）
@@ -301,7 +322,7 @@ final class ShelfController: NSObject {
         items.removeAll { ids.contains($0.id) }
         for item in gone {
             conversions[item.id] = nil // コピーを作っている途中なら、作り終わったところで片付ける（copyFinished）
-            ShelfThumbnails.shared.forget(item.url)
+            item.files.forEach { ShelfThumbnails.shared.forget($0.url) }
             library.discard(item)
         }
         itemsChanged()
@@ -312,15 +333,21 @@ final class ShelfController: NSObject {
         remove(items.map(\.id))
     }
 
-    /// 外へのドラッグが終わった。移動として受け取られた項目は棚から外す（コピーやエイリアスなら残す。ShelfRules）
-    func dragEnded(_ ids: [UUID], operation: ShelfDragOperation) {
+    /// 外へのドラッグが終わった。移動として受け取られたファイルは棚から外す（コピーやエイリアスなら残す。ShelfRules）。
+    /// まとめは、持ち出したファイルが全部移動したら消え、残りがあればそのまま残る
+    func dragEnded(_ dragged: [ShelfItem], operation: ShelfDragOperation) {
         draggingOut = false
-        let moved = items.filter { ids.contains($0.id) && !ShelfRules.staysOnShelf($0.kind, after: operation) }
+        var moved: [(itemID: UUID, file: ShelfItem)] = []
+        for d in dragged where !ShelfRules.staysOnShelf(d.kind, after: operation) {
+            guard let i = items.firstIndex(where: { $0.id == d.id }) else { continue }
+            let ids = Set(d.files.map(\.id))
+            moved += items[i].files.filter { ids.contains($0.id) }.map { (d.id, $0) }
+            if let rest = items[i].removingFiles(ids) { items[i] = rest } else { items.remove(at: i) }
+        }
         if !moved.isEmpty {
-            items.removeAll { item in moved.contains { $0.id == item.id } }
-            for item in moved {
-                ShelfThumbnails.shared.forget(item.url)
-                library.cleanUpAfterMove(item)
+            for (_, file) in moved {
+                ShelfThumbnails.shared.forget(file.url)
+                library.cleanUpAfterMove(file)
             }
             itemsChanged()
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.restoreUnmoved(moved) }
@@ -331,12 +358,25 @@ final class ShelfController: NSObject {
     /// 移動として受け取られたのに、ファイルが元の場所に残っているものを棚に戻す
     /// （Finder の「同じ名前があります」で中止した、移動と返して読んだだけのアプリ、など）。
     /// 移動されたコピーの、空になったフォルダはここで片付ける
-    private func restoreUnmoved(_ moved: [ShelfItem]) {
-        let unmoved = moved.filter { FileManager.default.fileExists(atPath: $0.url.path) }
-        moved.filter { m in !unmoved.contains { $0.id == m.id } }.forEach(library.cleanUpAfterMove)
-        let back = unmoved.filter { u in !items.contains { $0.id == u.id } }
-        guard enabled, !back.isEmpty else { return }
-        insert(back)
+    private func restoreUnmoved(_ moved: [(itemID: UUID, file: ShelfItem)]) {
+        let exists = { (file: ShelfItem) in FileManager.default.fileExists(atPath: file.url.path) }
+        moved.filter { !exists($0.file) }.forEach { library.cleanUpAfterMove($0.file) }
+        guard enabled else { return }
+        let onShelf = Set(items.flatMap(\.files).map(\.id))
+        let unmoved = moved.filter { exists($0.file) && !onShelf.contains($0.file.id) }
+        guard !unmoved.isEmpty else { return }
+        // もとの項目ごとに戻す（まとめが残っていれば、その中へ）
+        var back: [ShelfItem] = []
+        for itemID in unmoved.map(\.itemID).reduce(into: [UUID](), { if !$0.contains($1) { $0.append($1) } }) {
+            let files = unmoved.filter { $0.itemID == itemID }.map(\.file)
+            if let i = items.firstIndex(where: { $0.id == itemID && $0.isGroup }) {
+                items[i].members += files
+                items[i].updateGroupState()
+            } else {
+                back.append(ShelfItem.group(files, id: itemID))
+            }
+        }
+        if back.isEmpty { itemsChanged() } else { insert(back) }
     }
 
     /// 元のファイルが動いた・消えたかを確かめ直す（棚を開くとき・ドラッグやメニューの前）
@@ -348,12 +388,12 @@ final class ShelfController: NSObject {
         if changed { itemsChanged() }
     }
 
-    /// ⌘V: クリップボードの中身を棚に入れる（ファイル → コピー（⌘⌥V なら参照）、画像 → PNG、テキスト → メモ）
-    func paste(as mode: ShelfDropMode = .copy) {
+    /// ⌘V: クリップボードの中身を棚に入れる（ファイル → スイッチの置き方、画像 → PNG、テキスト → メモ）
+    func paste() {
         let pb = NSPasteboard.general
         if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
            !urls.isEmpty {
-            add(urls, as: mode) // Finder の ⌘C → ⌘V と同じく、元のファイルはそのまま
+            add(urls, as: dropMode)
         } else if let image = NSImage(pasteboard: pb), let tiff = image.tiffRepresentation,
                   let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]),
                   let item = library.store(png, name: "\(L("画像", "Image")) \(Self.stamp()).png") {
@@ -367,26 +407,44 @@ final class ShelfController: NSObject {
 
     // MARK: コピー
 
-    private func startCopy(_ item: ShelfItem, from source: URL) {
-        let id = item.id, destination = item.url
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let ok = (try? ShelfLibrary.copy(from: source, to: destination)) != nil
-            DispatchQueue.main.async { self?.copyFinished(id, ok: ok) }
+    /// 項目の中のファイルを、それぞれ棚の中へ複製する（sources: ファイルの id → 複製のもと）
+    private func startCopies(_ item: ShelfItem, sources: [UUID: URL]) {
+        copyJobs[item.id] = (Set(sources.keys), [])
+        for file in item.files {
+            guard let source = sources[file.id] else { continue }
+            let itemID = item.id, fileID = file.id, destination = file.url
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                let ok = (try? ShelfLibrary.copy(from: source, to: destination)) != nil
+                DispatchQueue.main.async { self?.copyFinished(itemID, file: fileID, ok: ok) }
+            }
         }
     }
 
-    private func copyFinished(_ id: UUID, ok: Bool) {
-        let original = conversions.removeValue(forKey: id)
-        guard let i = items.firstIndex(where: { $0.id == id }) else {
-            library.removeCopyFolder(id) // 作っている途中で棚から外された
+    private func copyFinished(_ itemID: UUID, file fileID: UUID, ok: Bool) {
+        guard var job = copyJobs[itemID] else { return library.removeCopyFolder(fileID) }
+        job.pending.remove(fileID)
+        if !ok { job.failed.insert(fileID) }
+        copyJobs[itemID] = job.pending.isEmpty ? nil : job
+        guard let i = items.firstIndex(where: { $0.id == itemID }) else {
+            library.removeCopyFolder(fileID) // 作っている途中で棚から外された
+            if job.pending.isEmpty { conversions[itemID] = nil }
             return
         }
-        if ok {
-            items[i].status = .ready
-        } else {
-            library.removeCopyFolder(id)
-            NSSound.beep()
-            if let original { items[i] = original } else { items.remove(at: i) }
+        if ok { items[i].setStatus(.ready, ofFile: fileID) }
+        if job.pending.isEmpty {
+            let original = conversions.removeValue(forKey: itemID)
+            if !job.failed.isEmpty {
+                NSSound.beep()
+                if let original {
+                    // 参照からの切り替え: 1 つでも失敗したら、作ったコピーを消して参照に戻す
+                    items[i].files.forEach { library.removeCopyFolder($0.id) }
+                    items[i] = original
+                } else {
+                    // 新しく置いたコピー: 失敗したファイルだけ外す
+                    job.failed.forEach { library.removeCopyFolder($0) }
+                    if let rest = items[i].removingFiles(job.failed) { items[i] = rest } else { items.remove(at: i) }
+                }
+            }
         }
         itemsChanged()
     }
@@ -394,15 +452,31 @@ final class ShelfController: NSObject {
     /// 参照で置いたものを、棚の中のコピーに切り替える（元のファイルはそのまま）
     func makeCopies(_ ids: [UUID]) {
         refreshItems(ids)
-        for i in items.indices where ids.contains(items[i].id) && items[i].kind == .reference && items[i].isAvailable {
-            let reference = items[i]
-            let copy = library.plannedCopy(of: reference.url, id: reference.id)
-            conversions[reference.id] = reference
-            items[i] = copy
-            startCopy(copy, from: reference.url)
+        for i in items.indices where ids.contains(items[i].id) && items[i].kind == .reference && items[i].isAvailable
+            && copyJobs[items[i].id] == nil {
+            let original = items[i]
+            var sources: [UUID: URL] = [:]
+            let copies = original.files.filter(\.isAvailable).map { file -> ShelfItem in
+                sources[file.id] = file.url
+                return library.plannedCopy(of: file.url, id: file.id)
+            }
+            let converted = ShelfItem.group(copies, id: original.id)
+            conversions[converted.id] = original
+            items[i] = converted
+            startCopies(converted, sources: sources)
         }
         itemsChanged()
     }
+
+    /// まとめを 1 つずつの項目に分ける（同じ場所に並べる）
+    func ungroup(_ ids: [UUID]) {
+        items = items.flatMap { item in
+            ids.contains(item.id) && item.isGroup && copyJobs[item.id] == nil ? item.members : [item]
+        }
+        itemsChanged()
+    }
+
+    func isCopying(_ id: UUID) -> Bool { copyJobs[id] != nil }
 
     // MARK: 選択
 
@@ -439,11 +513,11 @@ final class ShelfController: NSObject {
         let ids = selection.dragItems(from: id, in: items.map(\.id))
         refreshItems(ids)
         guard items.first(where: { $0.id == id })?.isAvailable == true else { return [] }
-        return items.filter { ids.contains($0.id) && $0.isAvailable }
+        return items.filter { ids.contains($0.id) && $0.isAvailable }.map { $0.keepingAvailableFiles() }
     }
 
     /// 開いている棚の上でのキー操作（イベントタップから呼ばれる。true を返すと前面のアプリに届かない）
-    /// - ⌘V: 貼り付け（ファイルはコピー）/ ⌘⌥V: 参照で貼り付け / ⌘N: 新しいメモ / ⌘A: すべて選択 / esc: 選択を外す
+    /// - ⌘V: 貼り付け（ファイルはスイッチの置き方）/ ⌘N: 新しいメモ / ⌘A: すべて選択 / esc: 選択を外す
     /// - スペース: Quick Look
     func handleKeyDown(_ event: CGEvent) -> Bool {
         guard !MemoEditor.shared.isOpen, let panel else { return false }
@@ -474,9 +548,6 @@ final class ShelfController: NSObject {
         switch (keyCode, flags) {
         case (Int64(kVK_ANSI_V), [.maskCommand]):
             DispatchQueue.main.async { self.paste() }
-            return true
-        case (Int64(kVK_ANSI_V), [.maskCommand, .maskAlternate]):
-            DispatchQueue.main.async { self.paste(as: .reference) }
             return true
         case (Int64(kVK_ANSI_N), [.maskCommand]):
             DispatchQueue.main.async { self.createMemo(edit: true) }
@@ -545,15 +616,17 @@ final class ShelfController: NSObject {
 
     func showQuickLook(_ targets: [ShelfItem]) {
         let shown = targets.filter(\.isAvailable)
-        guard let panel, !shown.isEmpty, let ql = QLPreviewPanel.shared() else { return }
-        quickLook.items = shown.map(\.url)
+        let files = shown.flatMap(\.files).filter(\.isAvailable) // まとめは中のファイルを全部
+        guard let panel, !files.isEmpty, let ql = QLPreviewPanel.shared() else { return }
+        quickLook.items = files.map(\.url)
         quickLook.sourceFrame = { [weak panel] url in panel?.screenFrame(of: url) ?? .zero }
         quickLook.onClose = { [weak self] in self?.quickLookEnded() }
         // 中身は直接渡す（TriTab は前面に出ないので、レスポンダチェーン経由では渡らない）
         ql.dataSource = quickLook
         ql.delegate = quickLook
         ql.reloadData()
-        ql.currentPreviewItemIndex = hoveredItem.flatMap { id in shown.firstIndex { $0.id == id } } ?? 0
+        let start = hoveredItem.flatMap { id in shown.first { $0.id == id } }?.files.first(where: \.isAvailable)
+        ql.currentPreviewItemIndex = start.flatMap { f in files.firstIndex { $0.id == f.id } } ?? 0
         ql.orderFront(nil)
     }
 
@@ -705,7 +778,9 @@ enum ShelfGeometry {
             // 項目が 1 段に並ぶまで横に広げ（左右に「新規メモ」「貼り付け」のボタンの列を取る）、
             // 画面で決まる上限を超えたら下へ段を足す。3 段を超えたぶんはスクロール
             let wanted = CGFloat(itemCount) * ShelfItemView.width + sideInset * 2
-            let width = min(max(base + 250, wanted), maxWidth(screen))
+            // ノッチのある画面では、上の帯のノッチの横に置き方のスイッチが入るよう、少し広めにする
+            let least = base + (notch.width > 0 ? 300 : 250)
+            let width = min(max(least, wanted), maxWidth(screen))
             let grid = ShelfGrid(itemCount: itemCount, shelfWidth: width)
             return NSSize(width: width, height: notch.height + grid.visibleHeight + itemPadding * 2)
         case .large:
@@ -913,6 +988,7 @@ final class ShelfPanel: NSPanel {
 
     func selectionChanged() { stage.selectionChanged() }
     func receivingDragChanged() { stage.receivingDragChanged() }
+    func dropModeChanged() { stage.dropModeChanged() }
     func refreshItem(_ url: URL) { stage.refreshItem(url) }
     func bounce() { stage.bounce() }
     func screenFrame(of url: URL) -> NSRect { stage.screenFrame(of: url) }
@@ -957,8 +1033,8 @@ final class ShelfStage: NSView {
     /// 項目を並べる場所（左右のボタンの列のあいだ）。3 段を超えたらスクロールする
     private let scroll = NSScrollView()
     private let grid = ShelfGridView()
-    /// ドラッグで持ってきているあいだの、左右 2 つの受け口
-    private let dropZones = ShelfDropZonesView()
+    /// ドラッグで持ってきているあいだの受け口（いまの置き方を大きく出す）
+    private let dropZones = ShelfDropZoneView()
     /// 文字やボタン。項目の上に重なるので、自分自身はマウスを受けずに下の項目へ通す
     private let message = ShelfPassthroughView()
     private var itemViews: [UUID: ShelfItemView] = [:]
@@ -997,6 +1073,7 @@ final class ShelfStage: NSView {
         scroll.appearance = NSAppearance(named: .darkAqua) // 黒い棚の上で見えるスクロールバー
         scroll.documentView = grid
         content.addSubview(scroll)
+        dropZones.show(controller.dropMode, active: false, animated: false)
         addSubview(content)
         addSubview(dropZones)
         addSubview(message)
@@ -1135,7 +1212,7 @@ final class ShelfStage: NSView {
 
     // MARK: 中身
 
-    /// ファイルを持ってきているあいだは、項目の代わりに左右 2 つの受け口を出す（広がった状態はいつも）
+    /// ファイルを持ってきているあいだは、項目の代わりに受け口を出す（広がった状態はいつも）
     private var showsDropZones: Bool {
         state == .large || (state == .open && controller?.receivingDrag == true)
     }
@@ -1144,7 +1221,7 @@ final class ShelfStage: NSView {
 
     /// 項目と受け口を入れ替える（ファイルを持ってきた・置いた・広がった）
     private func fadeContent() {
-        if !showsDropZones { dropZones.highlighted = nil }
+        if !showsDropZones { dropZones.show(controller?.dropMode ?? .reference, active: false) }
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.16
             content.animator().alphaValue = showsItems ? 1 : 0
@@ -1153,9 +1230,17 @@ final class ShelfStage: NSView {
     }
 
     func receivingDragChanged() {
+        if !dropZones.isActive { dropZones.show(controller?.dropMode ?? .reference, active: false, animated: false) }
         updateMessage(caption: nil)
         layoutContent(animated: false)
         fadeContent()
+    }
+
+    /// 置き方が切り替わった（スイッチは作り直さずに表示だけ変える。押している最中に呼ばれるため）
+    func dropModeChanged() {
+        let mode = controller?.dropMode ?? .reference
+        message.subviews.compactMap { $0 as? ShelfModeSwitch }.forEach { $0.setMode(mode) }
+        if !dropZones.isActive { dropZones.show(mode, active: false) }
     }
 
     func setItems(_ items: [ShelfItem], animated: Bool) {
@@ -1208,7 +1293,7 @@ final class ShelfStage: NSView {
     func refreshItem(_ url: URL) { itemViews.values.first { $0.item.url == url }?.refresh() }
 
     func screenFrame(of url: URL) -> NSRect {
-        guard let v = itemViews.values.first(where: { $0.item.url == url }), let window else { return .zero }
+        guard let v = itemViews.values.first(where: { $0.item.files.contains { $0.url == url } }), let window else { return .zero }
         return window.convertToScreen(v.convert(v.thumbFrame, to: nil))
     }
 
@@ -1289,9 +1374,14 @@ final class ShelfStage: NSView {
             stack.frame.size = stack.fittingSize
             center(stack)
         case .large:
-            break // 左右の受け口（dropZones）だけを出す
+            break // 受け口（dropZones）だけを出す
         case .open:
             if showsDropZones { break } // ファイルを持ってきているあいだは、受け口だけ
+            if !order.isEmpty {
+                // 棚を空にする: 項目にかぶらないよう、上の帯（ノッチの横）の右端に置く
+                button("xmark.circle.fill", L("棚を空にする", "Clear Shelf"), #selector(clearAll),
+                       x: area.width - 16 - 22, y: area.height + (notchHeight - 20) / 2)
+            }
             if let caption {
                 if order.isEmpty { center(label(caption, 15, 0.9, weight: .semibold)) }
             } else if order.isEmpty {
@@ -1311,11 +1401,19 @@ final class ShelfStage: NSView {
             }
             paste.frame = NSRect(x: area.width - 10 - ShelfSideButton.width, y: y, width: ShelfSideButton.width, height: h)
             message.addSubview(paste)
-            if !order.isEmpty {
-                // 棚を空にする: 項目にかぶらないよう、上の帯（ノッチの横）の右端に置く
-                button("xmark.circle.fill", L("棚を空にする", "Clear Shelf"), #selector(clearAll),
-                       x: area.width - 16 - 22, y: area.height + (notchHeight - 20) / 2)
+        }
+
+        // 置き方のスイッチ（コピー / 参照）: 開いているあいだ、上の帯（ノッチの横）の左端にいつも出す
+        if state == .open || state == .large, let controller {
+            let toggle = ShelfModeSwitch(mode: controller.dropMode) { [weak controller] mode in
+                controller?.switchDropMode(to: mode)
             }
+            // ノッチのある画面では、ノッチにかからない幅だけ使う（足りなければ文字を省いてアイコンだけにする）
+            let notchWidth = ShelfGeometry.notchRect(on: screen)?.width ?? 0
+            let room = notchWidth > 0 ? (area.width - notchWidth) / 2 - 16 - 8 : area.width / 2 - 16 - 44
+            toggle.fit(width: room)
+            toggle.frame.origin = NSPoint(x: 16, y: area.height + ((notchHeight - toggle.frame.height) / 2).rounded())
+            message.addSubview(toggle)
         }
     }
 
@@ -1375,22 +1473,23 @@ final class ShelfStage: NSView {
         return dropOperation(for: sender)
     }
 
-    /// カーソルのある側（左: コピー / 右: 参照）を強調し、カーソルの印（「+」かエイリアスの矢印）を返す
+    /// いまの置き方を受け口に出し、カーソルの印（「+」かエイリアスの矢印）を返す
     private func dropOperation(for sender: NSDraggingInfo) -> NSDragOperation {
-        let mode = dropMode(at: sender.draggingLocation)
-        dropZones.highlighted = mode
+        let mode = currentDropMode
+        dropZones.show(mode, active: true)
         return NSDragOperation(ShelfRules.dropOperation(for: mode, sourceAllows: ShelfDragOperation(sender.draggingSourceOperationMask)))
     }
 
-    private func dropMode(at windowPoint: NSPoint) -> ShelfDropMode {
-        let p = convert(windowPoint, from: nil)
-        let r = rect(for: targetSize)
-        return ShelfRules.dropMode(atX: p.x, shelfMinX: r.minX, shelfMaxX: r.maxX)
+    /// 落としたときの置き方: スイッチの置き方。⌥ を押していればコピー、⌘⌥ なら参照
+    private var currentDropMode: ShelfDropMode {
+        let flags = NSEvent.modifierFlags
+        return ShelfRules.dropMode(default: controller?.dropMode ?? .reference,
+                                   option: flags.contains(.option), command: flags.contains(.command))
     }
 
     override func draggingExited(_ sender: NSDraggingInfo?) {
         shape.fillColor = NSColor.black.cgColor
-        dropZones.highlighted = nil
+        dropZones.show(controller?.dropMode ?? .reference, active: false)
         // 広がった直後はウィンドウが変わるので、外に出たかはマウスの位置で確かめる
         if window.map({ !NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }) ?? true {
             controller?.dragHover(false)
@@ -1399,7 +1498,7 @@ final class ShelfStage: NSView {
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         shape.fillColor = NSColor.black.cgColor
-        let mode = dropMode(at: sender.draggingLocation)
+        let mode = currentDropMode
         controller?.dragHover(false)
         let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self],
                                                          options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
@@ -1410,13 +1509,14 @@ final class ShelfStage: NSView {
     }
 
     override func draggingEnded(_ sender: NSDraggingInfo) {
-        dropZones.highlighted = nil
+        dropZones.show(controller?.dropMode ?? .reference, active: false)
     }
 }
 
 // MARK: - 項目
 
 /// 棚の 1 項目。サムネイル（画像・PDF・動画など）か付箋（メモ）を表示し、右下にコピー / 参照の印を付ける。
+/// 一度に置いたまとめは、先頭のファイルのサムネイルのうしろにカードを重ね、右上に数を付ける。
 /// ドラッグで持ち出し（選んであればまとめて）、⌘クリック・⇧クリックで選び、右クリックでメニュー、
 /// マウスを乗せてスペースで Quick Look、ダブルクリックで開く、メモはクリックで編集。
 final class ShelfItemView: NSView, NSDraggingSource {
@@ -1433,6 +1533,9 @@ final class ShelfItemView: NSView, NSDraggingSource {
     private let selectionLayer = CALayer()
     private let nameHighlight = CALayer()
     private let badge = ShelfBadgeView()
+    /// まとめの、うしろに重ねるカードと、中の数
+    private let backCards = [NSImageView(), NSImageView()]
+    private let countBadge = ShelfCountBadge()
     private var spinner: NSProgressIndicator?
     private var mouseDownEvent: NSEvent?
     /// 選んである項目を修飾キーなしで押した（離したときにドラッグしていなければ、その項目だけを選び直す）
@@ -1443,7 +1546,9 @@ final class ShelfItemView: NSView, NSDraggingSource {
     private var thumbnailRequested = false
     private var isMemo: Bool { item.kind == .memo }
     /// サムネイルとアイコンに使う場所（コピーを作っている途中は、まだ元のファイルのほうを見せる）
-    private var displayURL: URL { item.status == .copying ? (item.sourceURL ?? item.url) : item.url }
+    private static func displayURL(_ file: ShelfItem) -> URL {
+        file.status == .copying ? (file.sourceURL ?? file.url) : file.url
+    }
 
     var isSelected = false {
         didSet { if isSelected != oldValue { updateSelection() } }
@@ -1474,11 +1579,13 @@ final class ShelfItemView: NSView, NSDraggingSource {
         nameHighlight.opacity = 0
         layer?.addSublayer(nameHighlight)
 
-        imageView.frame = thumbFrame
-        imageView.imageScaling = .scaleProportionallyUpOrDown
-        imageView.wantsLayer = true
-        imageView.layer?.cornerRadius = 6
-        imageView.layer?.masksToBounds = true
+        for view in backCards.reversed() + [imageView] {
+            view.imageScaling = .scaleProportionallyUpOrDown
+            view.wantsLayer = true
+            view.layer?.cornerRadius = 6
+            view.layer?.masksToBounds = true
+        }
+        backCards.reversed().forEach(addSubview) // うしろのカードから重ねる
         memoCard.frame = thumbFrame.insetBy(dx: 2, dy: 3)
 
         nameLabel.font = .systemFont(ofSize: 10, weight: .medium)
@@ -1491,6 +1598,8 @@ final class ShelfItemView: NSView, NSDraggingSource {
         badge.frame = NSRect(x: thumbFrame.maxX - ShelfBadgeView.size + 5, y: thumbFrame.minY - 4,
                              width: ShelfBadgeView.size, height: ShelfBadgeView.size)
         addSubview(badge)
+        countBadge.frame = NSRect(x: thumbFrame.maxX - 20, y: thumbFrame.maxY - 12, width: 26, height: 15)
+        addSubview(countBadge)
 
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
                                        owner: self, userInfo: nil))
@@ -1510,14 +1619,16 @@ final class ShelfItemView: NSView, NSDraggingSource {
             memoCard.text = (try? String(contentsOf: item.url, encoding: .utf8)) ?? ""
             nameLabel.stringValue = L("メモ", "Note")
         } else {
-            nameLabel.stringValue = item.url.lastPathComponent
+            nameLabel.stringValue = item.isGroup ? L("\(item.files.count) 項目", "\(item.files.count) items") : item.url.lastPathComponent
             if thumbnailRequested { loadThumbnail() }
         }
+        layoutCards()
         // 見つからないものは薄く、コピー中のものはくるくるを重ねる
         let alpha: CGFloat = item.isAvailable ? 1 : item.status == .copying ? 0.45 : 0.35
-        imageView.alphaValue = alpha
+        (backCards + [imageView]).forEach { $0.alphaValue = alpha }
         memoCard.alphaValue = alpha
         badge.set(item.badge)
+        countBadge.count = item.isGroup ? item.files.count : 0
         toolTip = item.tooltip
         updateSpinner()
         updateSelection()
@@ -1530,10 +1641,25 @@ final class ShelfItemView: NSView, NSDraggingSource {
         loadThumbnail()
     }
 
+    /// ふつうの項目はサムネイル 1 枚。まとめは先頭のファイルのサムネイルの右上へ、無地のカードを（3 つ以上なら 2 枚）ずらして重ねる
+    private func layoutCards() {
+        let cards = [imageView] + backCards
+        let count = item.isGroup ? min(item.files.count, cards.count) : 1
+        let side: CGFloat = item.isGroup ? 42 : Self.thumb
+        for (i, card) in cards.enumerated() {
+            card.isHidden = i >= count
+            card.frame = NSRect(x: thumbFrame.minX + CGFloat(i) * 4, y: thumbFrame.minY + CGFloat(i) * 4, width: side, height: side)
+            // まとめのカードは、重なりがわかるよう地と縁を付ける（うしろのカードは無地。小さすぎて中身は見分けられないため）
+            card.layer?.backgroundColor = item.isGroup ? NSColor(white: i == 0 ? 0.17 : 0.24, alpha: 1).cgColor : nil
+            card.layer?.borderWidth = item.isGroup ? 1 : 0
+            card.layer?.borderColor = NSColor(white: 1, alpha: i == 0 ? 0.22 : 0.3).cgColor
+        }
+    }
+
     private func loadThumbnail() {
-        let url = displayURL
+        let url = Self.displayURL(item.files[0])
         imageView.image = ShelfThumbnails.shared.image(for: url, size: Self.thumb) { [weak self] image in
-            guard let self, self.displayURL == url else { return }
+            guard let self, Self.displayURL(self.item.files[0]) == url else { return }
             self.imageView.image = image
         }
     }
@@ -1620,35 +1746,40 @@ final class ShelfItemView: NSView, NSDraggingSource {
         reselectOnMouseUp = false
         let items = controller.itemsToDrag(from: item.id)
         guard !items.isEmpty else { return NSSound.beep() } // 見つからない・コピー中
-        // 選んだものはそれぞれの位置から持ち上げる
+        // 選んだものはそれぞれの位置から持ち上げる。まとめは中のファイルを全部、少しずつずらして重ねる
         let views = superview?.subviews.compactMap { $0 as? ShelfItemView } ?? []
-        let draggingItems = items.map { item -> NSDraggingItem in
-            let d = NSDraggingItem(pasteboardWriter: item.url as NSURL)
+        let draggingItems = items.flatMap { item -> [NSDraggingItem] in
             let view = views.first { $0.item.id == item.id } ?? self
-            d.setDraggingFrame(view.convert(view.thumbFrame, to: self), contents: view.dragImage)
-            return d
+            let frame = view.convert(view.thumbFrame, to: self)
+            return item.files.enumerated().map { i, file in
+                let d = NSDraggingItem(pasteboardWriter: file.url as NSURL)
+                let shift = CGFloat(min(i, 3)) * 4
+                d.setDraggingFrame(frame.offsetBy(dx: shift, dy: shift), contents: view.dragImage(for: file))
+                return d
+            }
         }
         dragged = items
         controller.draggingOut = true
         beginDraggingSession(with: draggingItems, event: down, source: self)
     }
 
-    private var dragImage: NSImage {
-        let icon = NSWorkspace.shared.icon(forFile: item.url.path)
-        return isMemo ? icon : (imageView.image ?? icon)
+    private func dragImage(for file: ShelfItem) -> NSImage {
+        let icon = NSWorkspace.shared.icon(forFile: file.url.path)
+        return isMemo ? icon : (ShelfThumbnails.shared.cached(file.url) ?? icon)
     }
 
     /// 行き先に許す操作は、項目の種類で決める（参照は元のファイルを移動、コピーは棚の複製を移動、メモは書き出すだけ）。
     /// ⌥を押しながらなら、macOS がコピーだけに絞る
     func draggingSession(_ session: NSDraggingSession,
                          sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
-        context == .outsideApplication ? NSDragOperation(ShelfRules.dragOutOperations(for: dragged.map(\.kind))) : []
+        context == .outsideApplication
+            ? NSDragOperation(ShelfRules.dragOutOperations(for: dragged.flatMap(\.files).map(\.kind))) : []
     }
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
-        let ids = dragged.map(\.id)
+        let items = dragged
         dragged = []
-        controller?.dragEnded(ids, operation: ShelfDragOperation(operation))
+        controller?.dragEnded(items, operation: ShelfDragOperation(operation))
     }
 }
 
@@ -1699,6 +1830,9 @@ final class ShelfThumbnails {
         }
         return NSWorkspace.shared.icon(forFile: url.path)
     }
+
+    /// もう作ってあるサムネイル（ドラッグの絵に使う）
+    func cached(_ url: URL) -> NSImage? { cache.object(forKey: url as NSURL) }
 
     func forget(_ url: URL) { cache.removeObject(forKey: url as NSURL) }
     func removeAll() { cache.removeAllObjects() }

@@ -335,6 +335,7 @@ private struct KeyCap: View {
 private struct ShelfPane: View {
     @AppStorage("shelf") private var shelf = false
     @AppStorage("shelfAnimation") private var animation: ShelfAnimationStyle = .jelly
+    @AppStorage("shelfDropMode") private var dropMode: ShelfDropMode = .reference
 
     var body: some View {
         Form {
@@ -345,6 +346,16 @@ private struct ShelfPane: View {
             }
             Section {
                 Toggle(L("ノッチの棚を使う", "Use the Notch Shelf"), isOn: $shelf)
+            }
+            Section {
+                Picker(L("置き方", "When You Drop Files"), selection: $dropMode) {
+                    Text(L("参照で置く（元の場所のまま）", "Add a Reference (the file stays where it is)")).tag(ShelfDropMode.reference)
+                    Text(L("コピーして置く（棚に複製。元はそのまま）", "Add a Copy (the original stays untouched)")).tag(ShelfDropMode.copy)
+                }
+            } footer: {
+                Text(L("棚の上の帯のスイッチでも切り替えられます。ドラッグ中に ⌥ を押しながら離すとコピー、⌘⌥ なら参照になります。",
+                       "You can also switch this on the strip at the top of the shelf. While dragging, hold ⌥ to add a copy, or ⌘⌥ to add a reference."))
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section {
                 Picker(L("動き", "Motion"), selection: $animation) {
@@ -374,8 +385,8 @@ private struct ShelfPane: View {
             Section(L("使い方", "How to Use")) {
                 Step(number: 1, text: L("ファイルをドラッグして少し上へ動かすと、ノッチから棚が顔を出す",
                                         "Drag a file and nudge it upward. The shelf peeks out of the notch."))
-                Step(number: 2, text: L("棚の左半分に落とすとコピー（元のファイルはそのまま）、右半分に落とすと参照（元の場所のまま）で置ける",
-                                        "Drop it on the left half to add a copy (the original stays put), or on the right half to add a reference (the file stays where it is)."))
+                Step(number: 2, text: L("そのまま棚に落とす。参照かコピーかは、棚の上の帯のスイッチで選んだ置き方になる。一度に複数を落とすと、1 つのまとめになる",
+                                        "Drop it on the shelf. The switch on the strip at the top of the shelf decides whether it’s added as a reference or a copy. Several files dropped at once become one stack."))
                 Step(number: 3, text: L("ノッチにマウスを乗せても棚が開く。開いているあいだは ⌘V でクリップボードの中身を置ける",
                                         "Hovering over the notch also opens the shelf. While it’s open, press ⌘V to add what’s on the clipboard."))
                 Step(number: 4, text: L("棚のファイルを好きな場所へドラッグすると、そこへ移動して棚から消える。参照なら元のファイル、コピーなら棚の複製が移動する。⌥を押しながらなら複製を置き、棚にも残る",

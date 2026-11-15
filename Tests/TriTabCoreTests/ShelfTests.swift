@@ -78,14 +78,66 @@ import Testing
     }
 }
 
+// MARK: - まとめ
+
+@Suite struct ShelfGroupTests {
+    private func file(_ name: String, _ kind: ShelfItem.Kind = .reference, _ status: ShelfItem.Status = .ready) -> ShelfItem {
+        ShelfItem(kind: kind, url: URL(fileURLWithPath: "/tmp/\(name)"), status: status)
+    }
+
+    @Test func oneDropOfSeveralFilesBecomesOneItem() {
+        let a = file("a.png"), b = file("b.png"), c = file("c.png")
+        let group = ShelfItem.group([a, b, c])
+        #expect(group.isGroup)
+        #expect(group.files.map(\.id) == [a.id, b.id, c.id])
+        #expect(group.kind == .reference)
+        #expect(group.url == a.url) // 見た目と名前は先頭のファイル
+        // 1 つだけなら、まとめにしない
+        #expect(ShelfItem.group([a]) == a)
+    }
+
+    @Test func groupIsUsableWhileAnyFileIsThere() {
+        var group = ShelfItem.group([file("a"), file("b", .reference, .missing)])
+        #expect(group.isAvailable)
+        #expect(group.missingCount == 1)
+        #expect(group.keepingAvailableFiles().files.count == 1) // 持ち出すのは見つかるものだけ
+        group.setStatus(.missing, ofFile: group.members[0].id)
+        #expect(!group.isAvailable)
+        #expect(group.status == .missing)
+    }
+
+    @Test func groupWaitsForAllCopies() {
+        var group = ShelfItem.group([file("a", .copy, .copying), file("b", .copy, .copying)])
+        #expect(group.status == .copying)
+        group.setStatus(.ready, ofFile: group.members[0].id)
+        #expect(group.status == .copying)
+        group.setStatus(.ready, ofFile: group.members[1].id)
+        #expect(group.status == .ready)
+    }
+
+    @Test func removingFilesShrinksTheGroup() {
+        let a = file("a"), b = file("b"), c = file("c")
+        let group = ShelfItem.group([a, b, c])
+        #expect(group.removingFiles([b.id])?.files.map(\.id) == [a.id, c.id])
+        #expect(group.removingFiles([b.id])?.id == group.id)
+        #expect(group.removingFiles([a.id, b.id]) == c) // 1 つだけ残ったら、ふつうの項目に戻る
+        #expect(group.removingFiles([a.id, b.id, c.id]) == nil)
+        #expect(a.removingFiles([a.id]) == nil)
+        #expect(a.removingFiles([b.id]) == a)
+    }
+}
+
 // MARK: - ドラッグの決まり
 
 @Suite struct ShelfRulesTests {
-    @Test func leftHalfCopiesAndRightHalfReferences() {
-        #expect(ShelfRules.dropMode(atX: 10, shelfMinX: 0, shelfMaxX: 400) == .copy)
-        #expect(ShelfRules.dropMode(atX: 199, shelfMinX: 0, shelfMaxX: 400) == .copy)
-        #expect(ShelfRules.dropMode(atX: 200, shelfMinX: 0, shelfMaxX: 400) == .reference)
-        #expect(ShelfRules.dropMode(atX: 1100, shelfMinX: 800, shelfMaxX: 1200) == .reference)
+    @Test func switchDecidesTheDropModeAndModifiersOverrideIt() {
+        // ふだんはスイッチの置き方
+        #expect(ShelfRules.dropMode(default: .reference, option: false, command: false) == .reference)
+        #expect(ShelfRules.dropMode(default: .copy, option: false, command: false) == .copy)
+        // ⌥ はコピー、⌘⌥ は参照（Finder と同じ）。⌘ だけでは変わらない
+        #expect(ShelfRules.dropMode(default: .reference, option: true, command: false) == .copy)
+        #expect(ShelfRules.dropMode(default: .copy, option: true, command: true) == .reference)
+        #expect(ShelfRules.dropMode(default: .copy, option: false, command: true) == .copy)
     }
 
     @Test func cursorShowsCopyOrAlias() {
@@ -246,6 +298,52 @@ private final class Sandbox {
         #expect(try FileManager.default.contentsOfDirectory(atPath: box.library.copiesDirectory.path).isEmpty)
         // 中身が残っていたものはゴミ箱へ。作りかけは消すだけ
         #expect(box.trashed.map(path) == [path(leftover.url)])
+    }
+
+    @Test func groupComesBackWithItsFiles() throws {
+        let box = Sandbox()
+        let refs = ShelfItem.group([box.library.reference(to: box.file("a.txt")), box.library.reference(to: box.file("b.txt"))])
+        let copies = ShelfItem.group([try box.readyCopy(of: box.file("c.png")), try box.readyCopy(of: box.file("d.png"))])
+        box.library.save([refs, copies])
+
+        let loaded = box.library.load()
+        #expect(loaded.map(\.id) == [refs.id, copies.id])
+        #expect(loaded.map(\.files.count) == [2, 2])
+        #expect(loaded[1].kind == .copy)
+        #expect(loaded.allSatisfy { $0.isAvailable })
+        // まとめの中のコピーは、片付けで消されない
+        #expect(loaded[1].files.allSatisfy { FileManager.default.fileExists(atPath: $0.url.path) })
+        #expect(box.trashed.isEmpty)
+    }
+
+    @Test func groupWithAMissingFileStaysUsable() throws {
+        let box = Sandbox()
+        let gone = box.file("gone.txt")
+        var group = ShelfItem.group([box.library.reference(to: box.file("a.txt")), box.library.reference(to: gone)])
+        try FileManager.default.removeItem(at: gone)
+        box.library.refresh(&group)
+        #expect(group.isAvailable)
+        #expect(group.missingCount == 1)
+    }
+
+    @Test func unfinishedCopyInAGroupIsDropped() throws {
+        let box = Sandbox()
+        let done = try box.readyCopy(of: box.file("a.png"))
+        let unfinished = box.library.plannedCopy(of: box.file("b.png"))
+        box.library.save([ShelfItem.group([done, unfinished])])
+
+        // 作りかけを捨てて 1 つになったので、ふつうの項目に戻る
+        let loaded = box.library.load()
+        #expect(loaded.map(\.id) == [done.id])
+        #expect(!loaded[0].isGroup)
+    }
+
+    @Test func discardingAGroupTrashesItsCopies() throws {
+        let box = Sandbox()
+        let a = try box.readyCopy(of: box.file("a.png"))
+        let b = try box.readyCopy(of: box.file("b.png"))
+        box.library.discard(ShelfItem.group([a, b]))
+        #expect(Set(box.trashed.map(path)) == Set([path(a.url), path(b.url)]))
     }
 
     @Test func memosFromEarlierVersionsAreKept() throws {

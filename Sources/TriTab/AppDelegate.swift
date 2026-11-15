@@ -55,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         input.decideClick = { [weak self] in self?.decideClick() ?? .passThrough }
         input.shouldSuppressScroll = { [weak self] in self?.touch.shouldSuppressScroll ?? false }
         input.onKeyDown = { [weak self] event in self?.shelf.handleKeyDown(event) ?? false }
+        shelf.onDropModeChange = { [weak self] mode in self?.settings.shelfDropMode = mode } // 棚のスイッチ → 設定
         startInputTap()
 
         applySettings()
@@ -357,6 +358,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         input.imeCommandEnabled = settings.imeCommandActive
         shelf.style = settings.shelfAnimation
+        shelf.dropMode = settings.shelfDropMode
         if settings.shelf != shelfEnabled {
             shelfEnabled = settings.shelf
             shelf.setEnabled(shelfEnabled)

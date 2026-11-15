@@ -37,14 +37,22 @@ public final class ShelfLibrary {
         var source: String?
         /// コピーを作っている途中だった（起動したときに残っていたら、作りかけなので捨てる）
         var copying: Bool?
+        /// まとめの中身
+        var members: [Record]?
+
+        init(_ item: ShelfItem) {
+            id = item.id
+            kind = item.kind
+            path = item.url.path
+            bookmark = item.bookmark
+            source = item.sourceURL?.path
+            copying = !item.isGroup && item.status == .copying ? true : nil
+            members = item.isGroup ? item.members.map(Record.init) : nil
+        }
     }
 
     public func save(_ items: [ShelfItem]) {
-        let records = items.map {
-            Record(id: $0.id, kind: $0.kind, path: $0.url.path, bookmark: $0.bookmark,
-                   source: $0.sourceURL?.path, copying: $0.status == .copying ? true : nil)
-        }
-        guard let data = try? JSONEncoder().encode(records) else { return }
+        guard let data = try? JSONEncoder().encode(items.map(Record.init)) else { return }
         try? fm.createDirectory(at: directory, withIntermediateDirectories: true)
         try? data.write(to: listURL, options: .atomic)
     }
@@ -55,24 +63,34 @@ public final class ShelfLibrary {
         let records = (try? Data(contentsOf: listURL)).flatMap { try? JSONDecoder().decode([Record].self, from: $0) } ?? []
         var seen = Set<UUID>()
         for r in records where seen.insert(r.id).inserted {
-            if r.copying == true {
-                removeCopyFolder(r.id)
-                continue
-            }
-            var item = ShelfItem(id: r.id, kind: r.kind, url: URL(fileURLWithPath: r.path), bookmark: r.bookmark,
-                                 sourceURL: r.source.map { URL(fileURLWithPath: $0) })
-            if r.kind == .memo, !fm.fileExists(atPath: item.url.path) { continue } // 消えたメモは外す
-            refresh(&item)
-            items.append(item)
+            if let item = restore(r) { items.append(item) }
         }
         // 一覧にないメモ（0.1.0 までに作ったもの）を後ろに足す
-        let known = Set(items.map { $0.url.standardizedFileURL.path })
+        let known = Set(items.flatMap(\.files).map { $0.url.standardizedFileURL.path })
         let memos = ((try? fm.contentsOfDirectory(at: memoDirectory, includingPropertiesForKeys: nil)) ?? [])
             .filter { $0.pathExtension == "txt" && !known.contains($0.standardizedFileURL.path) }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
         items += memos.map { ShelfItem(kind: .memo, url: $0) }
         sweep(keeping: items)
         return items
+    }
+
+    /// 保存してあった 1 項目を戻す。作りかけのコピーは捨て、消えたメモは外す。
+    /// まとめの中身が 1 つになったら、ふつうの項目に戻す
+    private func restore(_ r: Record) -> ShelfItem? {
+        if let members = r.members {
+            let files = members.compactMap(restore)
+            return files.isEmpty ? nil : ShelfItem.group(files, id: r.id)
+        }
+        if r.copying == true {
+            removeCopyFolder(r.id)
+            return nil
+        }
+        var item = ShelfItem(id: r.id, kind: r.kind, url: URL(fileURLWithPath: r.path), bookmark: r.bookmark,
+                             sourceURL: r.source.map { URL(fileURLWithPath: $0) })
+        if r.kind == .memo, !fm.fileExists(atPath: item.url.path) { return nil }
+        refresh(&item)
+        return item
     }
 
     // MARK: 項目を作る
@@ -124,6 +142,11 @@ public final class ShelfLibrary {
     @discardableResult
     public func refresh(_ item: inout ShelfItem) -> Bool {
         let before = item
+        if item.isGroup {
+            for i in item.members.indices { refresh(&item.members[i]) }
+            item.updateGroupState()
+            return item != before
+        }
         switch item.kind {
         case .reference:
             if let bookmark = item.bookmark, let (url, stale) = resolve(bookmark) {
@@ -155,6 +178,7 @@ public final class ShelfLibrary {
 
     /// 棚から外したときの後始末。コピーとメモはゴミ箱へ（戻せるように）。参照の元のファイルには触らない
     public func discard(_ item: ShelfItem) {
+        guard !item.isGroup else { return item.members.forEach(discard) }
         switch item.kind {
         case .reference:
             break
@@ -169,8 +193,9 @@ public final class ShelfLibrary {
 
     /// 外へドラッグして移動されたコピーの、空になったフォルダを消す
     public func cleanUpAfterMove(_ item: ShelfItem) {
-        guard item.kind == .copy else { return }
-        removeCopyFolder(item.id, onlyIfEmpty: true)
+        for file in item.files where file.kind == .copy {
+            removeCopyFolder(file.id, onlyIfEmpty: true)
+        }
     }
 
     /// コピーのフォルダを消す（作りかけのものや、作っている途中で棚から外したもの）
@@ -182,7 +207,7 @@ public final class ShelfLibrary {
 
     /// 一覧にないコピーのフォルダを片付ける。中身が残っていればゴミ箱へ（念のため戻せるように）、空なら消す
     func sweep(keeping items: [ShelfItem]) {
-        let keep = Set(items.filter { $0.kind == .copy }.map(\.id.uuidString))
+        let keep = Set(items.flatMap(\.files).filter { $0.kind == .copy }.map(\.id.uuidString))
         let folders = (try? fm.contentsOfDirectory(at: copiesDirectory, includingPropertiesForKeys: nil)) ?? []
         for folder in folders where !keep.contains(folder.lastPathComponent) {
             visibleContents(of: folder).forEach(trash)

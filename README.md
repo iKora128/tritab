@@ -41,10 +41,11 @@ Requires macOS 13 Ventura or later, on Apple silicon or Intel. TriTab is signed 
 - **⌘ alone for Eisu / Kana**: left ⌘ switches to Eisu (英数), right ⌘ to Kana (かな), like the popular Karabiner-Elements rule.
 - **Four-finger tap to toggle Eisu / Kana**
 - **Notch Shelf**: drag a file and nudge it upward, and a shelf slides out of the notch to hold it for later. Hovering over the notch opens it too.
-  - While you drag, the shelf splits in two. Drop on the left to **add a copy** (the shelf keeps a duplicate and the original stays untouched), or on the right to **add a reference** (the file stays where it is). A badge on each item shows which one it is.
+  - Files can be added two ways. **Add a Reference** leaves the file where it is; **Add a Copy** keeps a duplicate on the shelf and never touches the original. Pick one with the switch on the strip at the top of the shelf (beside the notch) or in Settings. While dragging, hold ⌥ to add a copy or ⌘⌥ to add a reference instead. A badge on each item shows which one it is.
+  - Several files dropped at once become one stack, shown as stacked cards with a count. Dragging the stack out takes all of its files together. Right-click › Ungroup splits it into separate items.
   - Dragging an item out moves it and takes it off the shelf: a reference moves the original file, a copy moves the shelf's duplicate. Hold ⌥ to drop a duplicate instead and keep the item. Dropping onto another disk, or into an app such as Mail, also leaves a copy and keeps the item.
-  - ⌘-click, ⇧-click or ⌘A selects several items to drag at once. Right-click for Open, Quick Look, Show in Finder, Make a Copy on the Shelf and Remove from Shelf.
-  - While it's open, ⌘V adds what's on the clipboard: files as copies (⌥⌘V as references), images as PNG files, and text as a note.
+  - ⌘-click, ⇧-click or ⌘A selects several items to drag at once. Right-click for Open, Quick Look, Show in Finder, Make a Copy on the Shelf, Ungroup and Remove from Shelf.
+  - While it's open, ⌘V adds what's on the clipboard: files the way the switch says, images as PNG files, and text as a note.
   - If you later move a referenced file in Finder, you can still open it from the shelf. If you delete it or move it to the Trash, the item gets a mark.
 - **Swipe while dragging to move to the next desktop**: while you drag a window or file with one finger held down, swipe left or right with three other fingers (four in 4-finger mode) to move to the next desktop. The window you're holding comes along, and a file can be dropped on the new desktop. Swiping left moves to the desktop on the right, the same direction as macOS's own swipe. Keep holding and swipe again to move further.
   - TriTab uses Mission Control's "Move left a space" and "Move right a space" shortcuts (⌃← / ⌃→). If they're turned off in System Settings › Keyboard › Keyboard Shortcuts… › Mission Control, TriTab tells you.

@@ -11,6 +11,7 @@ extension ShelfController {
         let targets = selectedItems
         let available = targets.filter(\.isAvailable)
         let n = targets.count
+        let fileCount = targets.reduce(0) { $0 + $1.files.count }
 
         let menu = NSMenu()
         menu.autoenablesItems = false
@@ -25,8 +26,9 @@ extension ShelfController {
             menu.addItem(info)
             menu.addItem(.separator())
         }
-        menu.addItem(action(L("開く", "Open"), enabled: !available.isEmpty) { [weak self] in self?.open(available) })
-        menu.addItem(action(n > 1 ? L("\(n) 項目を Quick Look", "Quick Look \(n) Items") : "Quick Look",
+        menu.addItem(action(fileCount > 1 ? L("\(fileCount) 項目を開く", "Open \(fileCount) Items") : L("開く", "Open"),
+                            enabled: !available.isEmpty) { [weak self] in self?.open(available) })
+        menu.addItem(action(fileCount > 1 ? L("\(fileCount) 項目を Quick Look", "Quick Look \(fileCount) Items") : "Quick Look",
                             enabled: !available.isEmpty) { [weak self] in self?.showQuickLook(available) })
         menu.addItem(action(L("Finder で表示", "Show in Finder"), enabled: !available.isEmpty) { [weak self] in
             self?.reveal(available)
@@ -41,6 +43,16 @@ extension ShelfController {
             make.toolTip = L("元のファイルはそのまま残します。このあと外へドラッグすると、棚のコピーのほうが移動します",
                              "The original stays where it is. Dragging out then moves the shelf’s copy instead of the original.")
             menu.addItem(make)
+        }
+        let groups = targets.filter(\.isGroup).map(\.id)
+        if !groups.isEmpty {
+            menu.addItem(.separator())
+            let ungroup = action(L("1 つずつに分ける", "Ungroup"), enabled: groups.contains { !isCopying($0) }) { [weak self] in
+                self?.ungroup(groups)
+            }
+            ungroup.toolTip = L("まとめて置いたファイルを、棚の上で 1 つずつの項目に分けます",
+                                "Splits the stack into separate items on the shelf.")
+            menu.addItem(ungroup)
         }
         menu.addItem(.separator())
         let ids = targets.map(\.id)
@@ -75,14 +87,14 @@ extension ShelfController {
     }
 
     func open(_ targets: [ShelfItem]) {
-        let urls = current(targets).filter(\.isAvailable).map(\.url)
+        let urls = current(targets).flatMap(\.files).filter(\.isAvailable).map(\.url)
         guard !urls.isEmpty else { return NSSound.beep() }
         urls.forEach { NSWorkspace.shared.open($0) }
     }
 
     /// Finder で表示（参照は元の場所、コピーは棚の中の場所）
     func reveal(_ targets: [ShelfItem]) {
-        let urls = current(targets).filter(\.isAvailable).map(\.url)
+        let urls = current(targets).flatMap(\.files).filter(\.isAvailable).map(\.url)
         guard !urls.isEmpty else { return NSSound.beep() }
         NSWorkspace.shared.activateFileViewerSelecting(urls)
     }
@@ -114,8 +126,9 @@ extension ShelfItem {
                       : NSColor(srgbRed: 0.3, green: 0.6, blue: 1, alpha: 1)     // 青（リンク）
     }
 
-    /// 右下の印。メモには付けない（付箋の見た目でわかる）
+    /// 右下の印。メモには付けない（付箋の見た目でわかる）。まとめは、見つからないファイルが 1 つでもあれば知らせる
     var badge: (symbol: String, color: NSColor)? {
+        if isGroup, missingCount > 0, status != .copying { return ("exclamationmark", .systemOrange) }
         switch (kind, status) {
         case (_, .missing): return ("exclamationmark", .systemOrange)
         case (_, .trashed): return ("trash.fill", .systemOrange)
@@ -127,6 +140,12 @@ extension ShelfItem {
 
     /// 右クリックメニューの先頭に出す、どう置いたものかの一言
     var summary: String {
+        if isGroup {
+            let how = status == .copying ? L("棚にコピーしています…", "copying to the shelf…")
+                : kind == .copy ? L("棚の中のコピー", "copies on the shelf") : L("参照", "references")
+            let missing = missingCount > 0 ? L("。\(missingCount) 個が見つかりません", "; \(missingCount) not found") : ""
+            return L("\(files.count) 項目のまとめ（\(how)\(missing)）", "Stack of \(files.count) items (\(how)\(missing))")
+        }
         switch (kind, status) {
         case (.memo, _): return L("メモ", "Note")
         case (_, .copying): return L("棚にコピーしています…", "Copying to the shelf…")
@@ -142,6 +161,15 @@ extension ShelfItem {
 
     /// ツールチップ。場所と、外へドラッグしたらどうなるか
     var tooltip: String {
+        if isGroup {
+            let names = files.prefix(6).map(\.url.lastPathComponent).joined(separator: "\n")
+            let more = files.count > 6 ? L("\nほか \(files.count - 6) 項目", "\nand \(files.count - 6) more") : ""
+            let how = kind == .copy
+                ? L("外へドラッグすると、まとめて棚の複製が移動します。元のファイルはそのまま",
+                    "Dragging it out moves all the shelf’s copies; the originals stay untouched.")
+                : L("外へドラッグすると、まとめて元のファイルが移動します", "Dragging it out moves all the original files.")
+            return "\(summary)\n\(names)\(more)\n\(how)"
+        }
         let path = Self.tilde(url)
         switch (kind, status) {
         case (.memo, _):
