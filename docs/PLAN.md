@@ -18,7 +18,7 @@ TriTab — Three-finger tab control for Mac / 3本指で、タブを自在に。
 - **軽さ**: 常駐時のメモリは約 13 MB（Sparkle を入れる前は約 11 MB）
 - **品質**: テスト 73 件（ジェスチャー判定・アプリ別のキー対応・棚の保存と並べ方）
 - **言語**: 日本語と英語（macOS の言語設定で切り替わる）
-- **配布**: v0.1.0 を公開（2026-11-13）。Developer ID で署名・公証済みの DMG と ZIP を GitHub Releases に置き、Homebrew（`brew install --cask ikora128/tap/tritab`）でも入れられる。Sparkle で自動アップデート
+- **配布**: 最新は v0.1.1（2026-11-15。最初の公開は v0.1.0、2026-11-13）。Developer ID で署名・公証済みの DMG と ZIP を GitHub Releases に置き、Homebrew（`brew install --cask ikora128/tap/tritab`）でも入れられる。Sparkle で自動アップデート（0.1.1 からは、使っていない隙に入れて再起動する）
 
 ## フェーズ 1: 仕上げ（公開前に必ずやる）
 
@@ -57,7 +57,7 @@ TriTab — Three-finger tab control for Mac / 3本指で、タブを自在に。
 
 - [x] リポジトリを公開（Public）に切り替える（2026-11-13）
 - [ ] 紹介ページを tritab.app に置く（GitHub Pages ＋ 独自ドメイン）。日本語と英語
-- [x] v0.1.0 を GitHub Releases で公開する（2026-11-13）
+- [x] v0.1.0 を GitHub Releases で公開する（2026-11-13）。v0.1.1（棚の強化・ドラッグ中のデスクトップ移動）を公開（2026-11-15）
 - [ ] 告知する:
   - [ ] X（動画つき）
   - [ ] Qiita / Zenn の記事（「BetterTouchTool の 3本指タブ操作を単体アプリにした」）
