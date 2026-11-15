@@ -41,6 +41,10 @@ Requires macOS 13 Ventura or later, on Apple silicon or Intel. TriTab is signed 
 - **⌘ alone for Eisu / Kana**: left ⌘ switches to Eisu (英数), right ⌘ to Kana (かな), like the popular Karabiner-Elements rule.
 - **Four-finger tap to toggle Eisu / Kana**
 - **Notch Shelf**: drag a file and nudge it upward, and a shelf slides out of the notch to hold it for later. Hovering over the notch opens it too, and while it's open you can paste files, images or text with ⌘V.
+- **Swipe while dragging to move to the next desktop**: while you drag a window or file with one finger held down, swipe left or right with three other fingers (four in 4-finger mode) to move to the next desktop. The window you're holding comes along, and a file can be dropped on the new desktop. Swiping left moves to the desktop on the right, the same direction as macOS's own swipe. Keep holding and swipe again to move further.
+  - TriTab uses Mission Control's "Move left a space" and "Move right a space" shortcuts (⌃← / ⌃→). If they're turned off in System Settings › Keyboard › Keyboard Shortcuts… › Mission Control, TriTab tells you.
+  - Tab gestures are paused while you're dragging.
+  - If you use Three Finger Drag, set TriTab to four fingers to use this. In 3-finger mode TriTab can't tell your swipe apart from the drag itself.
 - **Five-finger swipe up to sleep the display**
 
 ## Settings
@@ -68,7 +72,7 @@ The Command Line Tools are enough; Xcode isn't required. With the development ce
 
 - **Reading touches**: the private `MultitouchSupport.framework`, loaded with `dlopen` (`Sources/MTBridge`).
 - **Recognizing gestures**: `Sources/TriTabCore/GestureEngine.swift`, pure logic with tests.
-- **Clicks and keys**: a CGEventTap handles ⌘-click, ⌘ alone for Eisu / Kana, and scroll suppression.
+- **Clicks and keys**: a CGEventTap handles ⌘-click, ⌘ alone for Eisu / Kana, scroll suppression, and noticing when you're dragging.
 - **Sending shortcuts**: CGEvent.
 - **Updates**: [Sparkle](https://sparkle-project.org), with EdDSA-signed updates and a signed update feed.
 - Because it uses a private framework, TriTab can't be on the Mac App Store, and a macOS update may break it until TriTab is updated.

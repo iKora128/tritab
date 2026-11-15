@@ -379,6 +379,7 @@ enum GestureBroadcast {
     static func id(for event: GestureEvent) -> String {
         switch event {
         case let .swipe(d, n): return "swipe-\(d.rawValue)-\(n)"
+        case let .holdSwipe(d, n): return "hold-swipe-\(d.rawValue)-\(n)"
         case let .tap(n): return "tap-\(n)"
         case let .pinchIn(n): return "pinch-\(n)"
         }

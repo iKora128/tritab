@@ -144,6 +144,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func handle(_ event: GestureEvent) {
         guard settings.enabled else { return }
+        // ドラッグ中は、隣のデスクトップへの移動だけを受け付ける（タブは操作しない）
+        if input.isDragging {
+            if let toRight = dragSpaceDirection(event) {
+                moveSpace(toRight: toRight)
+            } else {
+                touch.log("ドラッグ中なので \(event) は何もしない")
+            }
+            return
+        }
         // はじめての案内の「試してみよう」に知らせる
         GestureBroadcast.post(event)
         // TriTab 自身の画面（設定・案内）が前面のときは何もしない（⌘W で閉じてしまわないように）
@@ -164,6 +173,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         default:
             break
         }
+    }
+
+    /// ドラッグ中の N 本指の左右スワイプなら、移る向き（true: 右のデスクトップ）。
+    /// クリックを押さえている指は数えない（holdSwipe）。その指が数に入らなかったとき（ドラッグロックなど）は swipe で来る
+    private func dragSpaceDirection(_ event: GestureEvent) -> Bool? {
+        guard settings.dragSpaces else { return nil }
+        let direction: SwipeDirection
+        switch event {
+        case let .holdSwipe(d, fingers) where fingers == n: direction = d
+        case let .swipe(d, fingers) where fingers == n: direction = d
+        default: return nil
+        }
+        // 3本指のドラッグでは、ドラッグしている指そのものが動くので、3本指のスワイプと見分けられない
+        if n == 3 && SystemGestureChecker.threeFingerDragEnabled { return nil }
+        switch direction {
+        case .left: return true // 指を左へ払うと右のデスクトップへ（macOS のスワイプと同じ向き）
+        case .right: return false
+        case .up, .down: return nil
+        }
+    }
+
+    /// 隣のデスクトップへ移る（つかんでいるウィンドウやファイルも一緒に）
+    private func moveSpace(toRight: Bool) {
+        let text = toRight ? L("右のデスクトップへ  ›", "Desktop on the Right  ›") : L("‹  左のデスクトップへ", "‹  Desktop on the Left")
+        guard KeySender.isTrusted else {
+            hud(L("アクセシビリティを許可してください", "Please allow Accessibility access"))
+            return
+        }
+        guard let combo = SpaceSwitcher.shortcut(toRight: toRight) else {
+            touch.log("Mission Control のショートカット（\(toRight ? "右" : "左")の操作スペースに移動）がオフのため移れません")
+            hud(L("Mission Control のショートカットがオフです", "The Mission Control shortcut is off"))
+            return
+        }
+        if dryRun {
+            touch.log("dry-run: \(toRight ? "右" : "左")のデスクトップへ移るはず")
+            hud(L("検出: \(text)", "Detected: \(text)"))
+            return
+        }
+        KeySender.send(combo)
+        touch.log("\(toRight ? "右" : "左")のデスクトップへ移動 (keyCode=\(combo.keyCode))")
+        feedback(text)
     }
 
     /// 押し込みクリックの瞬間に呼ばれる（イベントタップ経由）
@@ -256,6 +306,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             warnings.append(item(L("⚠︎ macOS のジェスチャーと競合しています（\(conflicts.count)件）…",
                                    "⚠︎ Conflicts with macOS Gestures (\(conflicts.count))…")) { [unowned self] in
                 showConflicts(conflicts)
+            })
+        }
+        if settings.dragSpaces && !SpaceSwitcher.isAvailable {
+            warnings.append(item(L("⚠︎ 「左／右の操作スペースに移動」のショートカットがオフです…",
+                                   "⚠︎ “Move left/right a space” shortcuts are off…")) {
+                SpaceSwitcher.openShortcutSettings()
             })
         }
         if !NSRunningApplication.runningApplications(withBundleIdentifier: "com.hegenberg.BetterTouchTool").isEmpty {

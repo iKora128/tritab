@@ -6,6 +6,7 @@ import Carbon.HIToolbox
 /// - N 本指で押し込みクリック → クリックに ⌘ を足す（リンクを新しいタブで開く）
 /// - N+1 本指で押し込みクリック → クリックを捨てて「閉じたタブを復元」
 /// - ⌘ を単体で押して離す → 左⌘ は英数、右⌘ はかな（Karabiner の定番ルールと同じ）
+/// - ドラッグ中かどうかを覚える（ドラッグ中のスワイプは、タブではなく隣のデスクトップへの移動にする）
 final class InputTap {
     static let shared = InputTap()
 
@@ -34,6 +35,15 @@ final class InputTap {
 
     private var pendingCommand: (keyCode: Int64, time: TimeInterval)?
 
+    /// 左ボタンを押したまま動かした（leftMouseDragged が来た）。離すまで true
+    private var dragged = false
+
+    /// ウィンドウやファイルをドラッグしている最中か（左ボタンを押したまま、マウスを動かした）。
+    /// 離したイベントを取りこぼしても残り続けないよう、いまボタンが押されているかも確かめる
+    var isDragging: Bool {
+        if dragged, NSEvent.pressedMouseButtons & 1 == 0 { dragged = false }
+        return dragged
+    }
 
     private init() {}
 
@@ -64,6 +74,7 @@ final class InputTap {
 
         case .leftMouseDown:
             pendingCommand = nil
+            dragged = false
             switch decideClick?() ?? .passThrough {
             case .passThrough:
                 clickMode = .none
@@ -87,6 +98,7 @@ final class InputTap {
                 if type == .leftMouseUp { clickMode = .none }
                 return nil
             }
+            dragged = type == .leftMouseDragged
             if type == .leftMouseUp { clickMode = .none }
             return Unmanaged.passUnretained(event)
 
