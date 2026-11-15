@@ -138,6 +138,11 @@ final class ShelfBadgeView: NSView {
 
 // MARK: - 部品
 
+/// 項目を左上から並べる入れ物（スクロールの中身。上下を反転して、1 段目を上にする）
+final class ShelfGridView: NSView {
+    override var isFlipped: Bool { true }
+}
+
 /// 自分自身ではマウスを受けず、下にある項目へ通す（上に載せた文字やボタンはふつうに受ける）
 final class ShelfPassthroughView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? {

@@ -702,15 +702,25 @@ enum ShelfGeometry {
         case .collapsed:
             return NSSize(width: base + 8, height: notch.height + 22)
         case .open:
-            // 左右に「新規メモ」「貼り付け」のボタン（各 ShelfSideButton.width）を置くぶん広げる
-            let content = CGFloat(itemCount) * ShelfItemView.width + ShelfSideButton.width * 2 + 48
-            return NSSize(width: min(max(base + 250, content), maxWidth(screen)),
-                          height: notch.height + ShelfItemView.height + 34)
+            // 項目が 1 段に並ぶまで横に広げ（左右に「新規メモ」「貼り付け」のボタンの列を取る）、
+            // 画面で決まる上限を超えたら下へ段を足す。3 段を超えたぶんはスクロール
+            let wanted = CGFloat(itemCount) * ShelfItemView.width + sideInset * 2
+            let width = min(max(base + 250, wanted), maxWidth(screen))
+            let grid = ShelfGrid(itemCount: itemCount, shelfWidth: width)
+            return NSSize(width: width, height: notch.height + grid.visibleHeight + itemPadding * 2)
         case .large:
+            // 広がる分: 1 段なら下へ 64、段が多くて縦に大きいときは少しだけ
             let open = size(for: .open, itemCount: itemCount, screen: screen)
-            return NSSize(width: min(open.width + 150, maxWidth(screen) + 150), height: open.height + 64)
+            let oneRow = notch.height + ShelfItemView.height + itemPadding * 2
+            return NSSize(width: min(open.width + 150, maxWidth(screen) + 150),
+                          height: max(open.height + 24, oneRow + 64))
         }
     }
+
+    /// 開いた棚の、項目の上下の余白
+    static let itemPadding: CGFloat = 17
+    /// 開いた棚の左右で、ボタンの列に取る幅（外側 10 + ボタン + 項目との間 12）。項目はこの内側だけに並べる
+    static let sideInset: CGFloat = 10 + ShelfSideButton.width + 12
 
     static func radius(for state: ShelfController.State, height: CGFloat) -> CGFloat {
         switch state {
@@ -725,8 +735,43 @@ enum ShelfGeometry {
 
     /// 描画の土台の大きさ（どの状態もこの中に収まる）
     static func stageSize(_ screen: NSScreen) -> NSSize {
-        NSSize(width: maxWidth(screen) + 150 + flare * 2 + shadowPad * 2,
-               height: notchSize(on: screen).height + ShelfItemView.height + 34 + 64 + shadowPad)
+        let tallest = ShelfGrid.height(rows: ShelfGrid.maxVisibleRows)
+        return NSSize(width: maxWidth(screen) + 150 + flare * 2 + shadowPad * 2,
+                      height: notchSize(on: screen).height + tallest + itemPadding * 2 + 64 + shadowPad)
+    }
+}
+
+/// 開いた棚の項目の並べ方。左右のボタンの列のあいだに、左上から詰めて並べる。
+/// 1 段に入りきらなければ段を足し、見せるのは 3 段まで（それより多いぶんはスクロール）
+struct ShelfGrid {
+    static let rowGap: CGFloat = 2
+    static let maxVisibleRows = 3
+
+    let itemCount: Int
+    let columns: Int
+    var rows: Int { max(Int((Double(itemCount) / Double(columns)).rounded(.up)), 1) }
+    var visibleRows: Int { min(rows, Self.maxVisibleRows) }
+    var scrolls: Bool { rows > Self.maxVisibleRows }
+    /// 実際に使う列の数（1 段に収まるときは、項目の数だけ。真ん中に寄せるため）
+    var usedColumns: Int { min(max(itemCount, 1), columns) }
+    var width: CGFloat { CGFloat(usedColumns) * ShelfItemView.width }
+    var visibleHeight: CGFloat { Self.height(rows: visibleRows) }
+    var contentHeight: CGFloat { Self.height(rows: rows) }
+
+    init(itemCount: Int, shelfWidth: CGFloat) {
+        self.itemCount = itemCount
+        columns = max(Int((shelfWidth - ShelfGeometry.sideInset * 2) / ShelfItemView.width), 1)
+    }
+
+    static func height(rows: Int) -> CGFloat {
+        CGFloat(rows) * ShelfItemView.height + CGFloat(max(rows - 1, 0)) * rowGap
+    }
+
+    /// i 番目の項目の位置（上から並べる入れ物の中で）
+    func frame(of index: Int) -> NSRect {
+        NSRect(x: CGFloat(index % columns) * ShelfItemView.width,
+               y: CGFloat(index / columns) * (ShelfItemView.height + Self.rowGap),
+               width: ShelfItemView.width, height: ShelfItemView.height)
     }
 }
 
@@ -909,6 +954,9 @@ final class ShelfStage: NSView {
     private let screen: NSScreen
     private let shape = CAShapeLayer()
     private let content = NSView()
+    /// 項目を並べる場所（左右のボタンの列のあいだ）。3 段を超えたらスクロールする
+    private let scroll = NSScrollView()
+    private let grid = ShelfGridView()
     /// ドラッグで持ってきているあいだの、左右 2 つの受け口
     private let dropZones = ShelfDropZonesView()
     /// 文字やボタン。項目の上に重なるので、自分自身はマウスを受けずに下の項目へ通す
@@ -939,6 +987,16 @@ final class ShelfStage: NSView {
         layer?.addSublayer(shape)
         content.wantsLayer = true
         message.wantsLayer = true
+        scroll.drawsBackground = false
+        scroll.contentView.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.scrollerStyle = .overlay
+        scroll.verticalScrollElasticity = .none
+        scroll.horizontalScrollElasticity = .none
+        scroll.appearance = NSAppearance(named: .darkAqua) // 黒い棚の上で見えるスクロールバー
+        scroll.documentView = grid
+        content.addSubview(scroll)
         addSubview(content)
         addSubview(dropZones)
         addSubview(message)
@@ -1068,6 +1126,8 @@ final class ShelfStage: NSView {
                     self.message.animator().alphaValue = state == .hidden ? 0 : 1
                     self.dropZones.animator().alphaValue = self.showsDropZones ? 1 : 0
                 }
+                // 3 段を超えて隠れている項目があることを、スクロールバーを一瞬出して知らせる
+                if self.showsItems { self.scroll.flashScrollers() }
             }
         }
         updateTrackingArea()
@@ -1111,6 +1171,7 @@ final class ShelfStage: NSView {
                 v?.removeFromSuperview()
             }
         }
+        var added = false
         for item in items {
             if let v = itemViews[item.id] {
                 v.update(item) // 状態や場所が変わっただけ
@@ -1119,7 +1180,8 @@ final class ShelfStage: NSView {
             let v = ShelfItemView(item: item, controller: controller)
             v.isSelected = controller?.isSelected(item.id) == true
             itemViews[item.id] = v
-            content.addSubview(v)
+            grid.addSubview(v)
+            added = true
             if animated {
                 v.alphaValue = 0
                 NSAnimationContext.runAnimationGroup { ctx in
@@ -1132,6 +1194,11 @@ final class ShelfStage: NSView {
         if showsItems { content.alphaValue = 1 }
         updateMessage(caption: nil)
         layoutContent(animated: animated)
+        // 置いたものが見える段までスクロールする（段が多くてスクロールするとき）
+        if added, animated, !order.isEmpty {
+            grid.scrollToVisible(ShelfGrid(itemCount: order.count, shelfWidth: rect(for: targetSize).width).frame(of: order.count - 1))
+            scroll.flashScrollers()
+        }
     }
 
     func selectionChanged() {
@@ -1149,7 +1216,7 @@ final class ShelfStage: NSView {
         let r = rect(for: targetSize)
         let area = NSRect(x: r.minX, y: r.minY, width: r.width, height: max(r.height - notchHeight, 0))
         content.frame = area
-        message.frame = area
+        message.frame = r // 上の帯（ノッチの横）にもボタンを置くので、棚全体
         // insetBy は小さすぎる矩形で null（原点が無限大）を返すので、自分で縮める
         let zones = NSRect(x: area.minX + 14, y: area.minY + 10,
                            width: max(area.width - 28, 0), height: max(area.height - 20, 0))
@@ -1163,19 +1230,21 @@ final class ShelfStage: NSView {
             dropZones.frame = zones
         }
         guard showsItems else { return }
-        let total = CGFloat(order.count) * ShelfItemView.width
-        let side = state == .open ? ShelfSideButton.width + 16 : 40
-        var x = max((area.width - total) / 2, side)
-        let y = (area.height - ShelfItemView.height) / 2
+        // 左右のボタンの列のあいだの真ん中に置く。1 段目は左右のボタンと高さをそろえ、段は下へ足す
+        let layout = ShelfGrid(itemCount: order.count, shelfWidth: area.width)
+        scroll.frame = NSRect(x: ((area.width - layout.width) / 2).rounded(),
+                              y: area.height - ShelfGeometry.itemPadding - layout.visibleHeight,
+                              width: layout.width, height: layout.visibleHeight)
+        scroll.verticalScrollElasticity = layout.scrolls ? .allowed : .none
+        grid.frame = NSRect(x: 0, y: 0, width: layout.width, height: layout.contentHeight)
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = animated ? 0.22 : 0
             ctx.allowsImplicitAnimation = animated
-            for id in order {
+            for (i, id) in order.enumerated() {
                 guard let v = itemViews[id] else { continue }
-                let f = NSRect(x: x, y: y, width: ShelfItemView.width, height: ShelfItemView.height)
+                let f = layout.frame(of: i)
                 if animated { v.animator().frame = f } else { v.frame = f }
                 v.loadThumbnailIfNeeded() // サムネイルは、項目が見えるときに初めて作る
-                x += ShelfItemView.width
             }
         }
     }
@@ -1183,9 +1252,9 @@ final class ShelfStage: NSView {
     /// 文字やボタンなど、項目以外の表示
     private func updateMessage(caption: String?) {
         message.subviews.forEach { $0.removeFromSuperview() }
-        let r = rect(for: targetSize)
-        message.frame = NSRect(x: r.minX, y: r.minY, width: r.width, height: max(r.height - notchHeight, 0))
-        let area = message.bounds
+        message.frame = rect(for: targetSize) // 上の帯（ノッチの横）まで含めた棚全体
+        // 文字やボタンを置くところ（上の帯を除いた部分）
+        let area = NSRect(x: 0, y: 0, width: message.bounds.width, height: max(message.bounds.height - notchHeight, 0))
 
         func label(_ text: String, _ size: CGFloat, _ alpha: CGFloat, weight: NSFont.Weight = .medium) -> NSTextField {
             let l = NSTextField(labelWithString: text)
@@ -1198,12 +1267,12 @@ final class ShelfStage: NSView {
             v.frame.origin = NSPoint(x: (area.width - v.frame.width) / 2, y: (area.height - v.frame.height) / 2 + dy)
             message.addSubview(v)
         }
-        func button(_ symbol: String, _ tip: String, _ action: Selector, x: CGFloat) {
+        func button(_ symbol: String, _ tip: String, _ action: Selector, x: CGFloat, y: CGFloat) {
             let b = NSButton(image: NSImage(systemSymbolName: symbol, accessibilityDescription: tip)!, target: self, action: action)
             b.isBordered = false
             b.contentTintColor = NSColor(white: 1, alpha: 0.5)
             b.toolTip = tip
-            b.frame = NSRect(x: x, y: area.height - 26, width: 22, height: 20)
+            b.frame = NSRect(x: x, y: y, width: 22, height: 20)
             message.addSubview(b)
         }
 
@@ -1229,9 +1298,9 @@ final class ShelfStage: NSView {
                 center(label(L("ここへドロップ", "Drop here"), 14, 0.85), dy: 9)
                 center(label(L("ファイル・画像・テキスト", "Files, images, text"), 11, 0.45), dy: -11)
             }
-            // 左: 新規メモ / 右: クリップボード（⌘C した内容）を貼り付け
-            let h = min(area.height - 16, ShelfItemView.height)
-            let y = (area.height - h) / 2
+            // 左: 新規メモ / 右: クリップボード（⌘C した内容）を貼り付け。1 段目の項目と高さをそろえる
+            let h = min(area.height - ShelfGeometry.itemPadding * 2, ShelfItemView.height)
+            let y = area.height - ShelfGeometry.itemPadding - h
             let memo = ShelfSideButton(symbol: "square.and.pencil", title: L("新規メモ", "New Note"), shortcut: "⌘N") { [weak self] in
                 self?.controller?.createMemo(edit: true)
             }
@@ -1243,7 +1312,9 @@ final class ShelfStage: NSView {
             paste.frame = NSRect(x: area.width - 10 - ShelfSideButton.width, y: y, width: ShelfSideButton.width, height: h)
             message.addSubview(paste)
             if !order.isEmpty {
-                button("xmark.circle.fill", L("棚を空にする", "Clear Shelf"), #selector(clearAll), x: area.width - ShelfSideButton.width - 40)
+                // 棚を空にする: 項目にかぶらないよう、上の帯（ノッチの横）の右端に置く
+                button("xmark.circle.fill", L("棚を空にする", "Clear Shelf"), #selector(clearAll),
+                       x: area.width - 16 - 22, y: area.height + (notchHeight - 20) / 2)
             }
         }
     }
@@ -1664,43 +1735,53 @@ final class ShelfSideButton: NSView {
 
     private let action: () -> Void
     private let background = CALayer()
+    private let icon = NSImageView()
+    private let name: NSTextField
+    private let sub: NSTextField
     private var pressed = false
 
     init(symbol: String, title: String, shortcut: String, action: @escaping () -> Void) {
         self.action = action
+        name = NSTextField(labelWithString: title)
+        sub = NSTextField(labelWithString: shortcut)
         super.init(frame: .zero)
         wantsLayer = true
         background.cornerRadius = 14
         background.backgroundColor = NSColor(white: 1, alpha: 0.08).cgColor
         layer?.addSublayer(background)
 
-        let icon = NSImageView(image: NSImage(systemSymbolName: symbol, accessibilityDescription: title)!)
-        icon.symbolConfiguration = .init(pointSize: 17, weight: .medium)
+        // アイコンは決まった高さの枠に収める（記号によっては枠からはみ出して、下の文字に重なるため）
+        icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+        icon.symbolConfiguration = .init(pointSize: 16, weight: .medium)
+        icon.imageScaling = .scaleProportionallyDown
         icon.contentTintColor = NSColor(white: 1, alpha: 0.9)
-        let name = NSTextField(labelWithString: title)
-        name.font = .systemFont(ofSize: 10.5, weight: .semibold)
-        name.textColor = NSColor(white: 1, alpha: 0.9)
-        let sub = NSTextField(labelWithString: shortcut)
-        sub.font = .systemFont(ofSize: 9, weight: .medium)
-        sub.textColor = NSColor(white: 1, alpha: 0.45)
-        let stack = NSStackView(views: [icon, name, sub])
-        stack.orientation = .vertical
-        stack.spacing = 3
-        stack.alignment = .centerX
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.centerXAnchor.constraint(equalTo: centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
-        ])
+        for (label, size, weight, alpha) in [(name, 10.5, NSFont.Weight.semibold, 0.9), (sub, 9, .medium, 0.45)] {
+            label.font = .systemFont(ofSize: size, weight: weight)
+            label.textColor = NSColor(white: 1, alpha: alpha)
+            label.alignment = .center
+            label.lineBreakMode = .byTruncatingTail
+        }
+        [icon, name, sub].forEach(addSubview)
         toolTip = L("\(title)（\(shortcut)）", "\(title) (\(shortcut))")
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
                                        owner: self, userInfo: nil))
     }
     required init?(coder: NSCoder) { fatalError() }
 
-    override func layout() {
-        super.layout()
+    // 上から アイコン（22）・間（6）・名前（14）・間（2）・補足（12）を、真ん中にそろえて置く。
+    // 高さが足りなければ補足を省く（文字とアイコンを重ねない）
+    override func resizeSubviews(withOldSize oldSize: NSSize) {
+        let showsSub = bounds.height >= 70
+        let total: CGFloat = 22 + 6 + 14 + (showsSub ? 2 + 12 : 0)
+        var top = ((bounds.height + total) / 2).rounded()
+        func place(_ v: NSView, _ h: CGFloat, gap: CGFloat = 0) {
+            top -= gap + h
+            v.frame = NSRect(x: 3, y: top, width: bounds.width - 6, height: h)
+        }
+        place(icon, 22)
+        place(name, 14, gap: 6)
+        sub.isHidden = !showsSub
+        if showsSub { place(sub, 12, gap: 2) }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         background.frame = bounds
