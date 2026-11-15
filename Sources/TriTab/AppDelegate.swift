@@ -121,8 +121,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let me = ProcessInfo.processInfo.processIdentifier
         let screenOpen = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
             .contains { $0.processIdentifier != me } // 設定画面・はじめての案内（別プロセス）
+        // 棚の中身は保存してあり、起動し直しても戻る。開いて操作している最中だけ待つ
+        let shelfInUse = shelf.draggingOut || [.peek, .open, .large].contains(shelf.state)
         return touch.currentFingerCount > 0       // トラックパッドに指が触れている
-            || !shelf.items.isEmpty               // 棚の中身は保存していないので、再起動すると消える
+            || shelfInUse
             || MemoEditor.shared.isOpen           // メモを編集している
             || screenOpen
     }
