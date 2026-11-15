@@ -81,6 +81,9 @@ enum SystemGestureChecker {
         return list
     }
 
+    /// 3本指のドラッグ（アクセシビリティ › ポインタコントロール）を使っているか
+    static var threeFingerDragEnabled: Bool { value("TrackpadThreeFingerDrag") != 0 }
+
     static func openAccessibilitySettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)

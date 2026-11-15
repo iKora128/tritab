@@ -81,6 +81,8 @@ struct StatusPill: View {
 struct GestureIllustration: View {
     enum Kind: Equatable {
         case swipe(SwipeDirection, fingers: Int)
+        /// 1 本で押さえたまま、ほかの指でスワイプ（ドラッグ中）
+        case holdSwipe(SwipeDirection, fingers: Int)
         case tap(fingers: Int)
         case click(fingers: Int)
         case pinch
@@ -121,7 +123,8 @@ struct GestureIllustration: View {
         }
 
         switch kind {
-        case let .swipe(dir, n):
+        case let .swipe(dir, n), let .holdSwipe(dir, n):
+            let holding = { if case .holdSwipe = kind { return true } else { return false } }()
             // 0〜0.15 着地、0.15〜0.65 移動、0.65〜0.85 離す
             let move = ease(clamp((t - 0.15) / 0.5))
             let alpha = t < 0.15 ? t / 0.15 : (t > 0.65 ? max(0, 1 - (t - 0.65) / 0.2) : 1)
@@ -134,7 +137,16 @@ struct GestureIllustration: View {
                 case .down: return (0, 1)
                 }
             }()
-            let start = CGPoint(x: center.x - ux * travel / 2, y: center.y - uy * travel / 2)
+            if holding {
+                // 下のほうでクリックを押さえたままの指（動かない）
+                let p = CGPoint(x: center.x, y: size.height * 0.78)
+                dot(p, alpha: 1, scale: 1.2)
+                let rr = r * 2
+                gc.stroke(Path(ellipseIn: CGRect(x: p.x - rr, y: p.y - rr, width: rr * 2, height: rr * 2)),
+                          with: .color(tint.opacity(0.45)), lineWidth: 1.5)
+            }
+            let start = CGPoint(x: center.x - ux * travel / 2,
+                                y: center.y - uy * travel / 2 - (holding ? size.height * 0.14 : 0))
             let spacing = r * 2.6
             for i in 0..<n {
                 let off = (CGFloat(i) - CGFloat(n - 1) / 2) * spacing

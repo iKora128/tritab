@@ -209,6 +209,149 @@ private func swipe(_ e: GestureEngine, n: Int = 3, dx: Float, dy: Float, steps: 
     }
 }
 
+/// ドラッグ中にクリックを押さえている親指（ID 9。下のほうで止まったまま）
+private let thumb = TouchPoint(id: 9, x: 0.5, y: 0.12)
+
+@Suite struct HoldSwipeTests {
+    private var config: GestureEngine.Config {
+        var c = GestureEngine.Config()
+        c.holdSwipe = true
+        return c
+    }
+
+    /// 親指を置いて押し込んだところ（ドラッグの始まり）
+    private func pressed(_ c: GestureEngine.Config? = nil) -> GestureEngine {
+        let e = GestureEngine(config: c ?? config)
+        _ = e.process([thumb], time: 0)
+        e.noteClick()
+        return e
+    }
+
+    /// 親指で押さえたまま、n 本の指で (dx, dy) だけ払い、払った指だけを離す
+    private func swipeWhileHolding(_ e: GestureEngine, n: Int = 3, dx: Float, dy: Float = 0, steps: Int = 10,
+                                   duration: Double = 0.2, start: Double) -> [GestureEvent] {
+        var out: [GestureEvent] = []
+        for i in 0...steps {
+            let t = Float(i) / Float(steps)
+            if let ev = e.process([thumb] + fingers(n, 0.5 + dx * t, 0.6 + dy * t), time: start + duration * Double(t)) {
+                out.append(ev)
+            }
+        }
+        for k in 1...3 {
+            if let ev = e.process([thumb], time: start + duration + 0.03 * Double(k)) { out.append(ev) }
+        }
+        return out
+    }
+
+    @Test func firesWhileThumbHolds() {
+        // 止まっている親指は数えず、動いた 3 本で判定する
+        #expect(swipeWhileHolding(pressed(), dx: -0.2, start: 0.1) == [.holdSwipe(.left, fingers: 3)])
+    }
+
+    @Test func fourFingerMode() {
+        #expect(swipeWhileHolding(pressed(), n: 4, dx: 0.2, start: 0.1) == [.holdSwipe(.right, fingers: 4)])
+    }
+
+    @Test func ignoredUnlessEnabled() {
+        // 既定では、止まっている指があると「指の向きがそろわない」のでこれまでどおり発火しない
+        #expect(swipeWhileHolding(pressed(GestureEngine.Config()), dx: -0.2, start: 0.1) == [])
+    }
+
+    @Test func needsClick() {
+        // 親指を置いて休めているだけ（押し込んでいない）なら何もしない
+        let e = GestureEngine(config: config)
+        _ = e.process([thumb], time: 0)
+        #expect(swipeWhileHolding(e, dx: -0.2, start: 0.1) == [])
+    }
+
+    @Test func twoMovingFingersAreNotEnough() {
+        #expect(swipeWhileHolding(pressed(), n: 2, dx: -0.2, start: 0.1) == [])
+    }
+
+    @Test func slowHoldSwipeDoesNotFire() {
+        // 0.8 秒かけて 0.15 → ゆっくりしたドラッグなので発火しない
+        #expect(swipeWhileHolding(pressed(), dx: -0.15, steps: 40, duration: 0.8, start: 0.1) == [])
+    }
+
+    @Test func movingThumbIsAnOrdinarySwipe() {
+        // 親指も一緒に動いたら、ふつうの 4 本指スワイプ
+        let e = pressed()
+        var out: [GestureEvent] = []
+        for i in 0...10 {
+            let t = Float(i) / 10
+            let th = TouchPoint(id: 9, x: 0.5 - 0.2 * t, y: 0.12)
+            if let ev = e.process([th] + fingers(3, 0.5 - 0.2 * t, 0.6), time: 0.1 + 0.2 * Double(t)) { out.append(ev) }
+        }
+        #expect(out == [.swipe(.left, fingers: 4)])
+    }
+
+    @Test func thumbMayWobbleALittle() {
+        // 押さえている親指が少しぶれても（stillDistance 以内なら）止まっているとみなす
+        let e = pressed()
+        var out: [GestureEvent] = []
+        for i in 0...10 {
+            let t = Float(i) / 10
+            let th = TouchPoint(id: 9, x: 0.5 + (i % 2 == 0 ? 0.008 : -0.008), y: 0.12)
+            if let ev = e.process([th] + fingers(3, 0.5 - 0.2 * t, 0.6), time: 0.1 + 0.2 * Double(t)) { out.append(ev) }
+        }
+        #expect(out == [.holdSwipe(.left, fingers: 3)])
+    }
+
+    @Test func repeatsWithoutLiftingThumb() {
+        // 払った指を離して親指だけになったら、親指を押さえたまま、もう一度払える
+        let e = pressed()
+        let first = swipeWhileHolding(e, dx: -0.2, start: 0.1)
+        let second = swipeWhileHolding(e, dx: -0.2, start: 0.5)
+        #expect(first + second == [.holdSwipe(.left, fingers: 3), .holdSwipe(.left, fingers: 3)])
+    }
+
+    @Test func retryAfterLiftingWithoutSwiping() {
+        // 指を置いただけで離しても、親指を押さえたまま、やり直せる
+        let e = pressed()
+        _ = e.process([thumb] + fingers(3, 0.5, 0.6), time: 0.1)
+        _ = e.process([thumb] + fingers(3, 0.5, 0.6), time: 0.15)
+        for k in 1...5 { _ = e.process([thumb], time: 0.15 + 0.03 * Double(k)) }
+        #expect(swipeWhileHolding(e, dx: 0.2, start: 0.5) == [.holdSwipe(.right, fingers: 3)])
+    }
+
+    @Test func backAndForthWhileHolding() {
+        // 親指で押さえたまま、指を離さずに左右へ往復
+        let e = pressed()
+        let xs = stride(from: Float(0.5), through: 0.38, by: -0.02).map { $0 }
+            + stride(from: Float(0.4), through: 0.52, by: 0.02).map { $0 }
+        var out: [GestureEvent] = []
+        for (i, x) in xs.enumerated() {
+            if let ev = e.process([thumb] + fingers(3, x, 0.6), time: 0.1 + Double(i) * 0.016) { out.append(ev) }
+        }
+        #expect(out == [.holdSwipe(.left, fingers: 3), .holdSwipe(.right, fingers: 3)])
+    }
+
+    @Test func ordinarySwipesAreUnchanged() {
+        let e = GestureEngine(config: config)
+        #expect(swipe(e, dx: -0.2, dy: 0) == [.swipe(.left, fingers: 3)])
+        #expect(swipe(e, dx: 0, dy: 0.3) == [.swipe(.up, fingers: 3)])
+    }
+
+    @Test func noRetryWhenRemainingFingerMoved() {
+        // ふつうのスワイプのあと、一緒に動いた指を 1 本残しても受け付け直さない（全部離すまで何もしない）
+        let e = GestureEngine(config: config)
+        _ = e.process(fingers(3, 0.5, 0.5), time: 0)
+        e.noteClick()
+        var out: [GestureEvent] = []
+        for i in 1...10 {
+            if let ev = e.process(fingers(3, 0.5 - Float(i) * 0.02, 0.5), time: Double(i) * 0.02) { out.append(ev) }
+        }
+        let rest = fingers(3, 0.3, 0.5)[0]
+        for k in 1...4 {
+            if let ev = e.process([rest], time: 0.2 + 0.03 * Double(k)) { out.append(ev) }
+        }
+        for i in 0...10 {
+            if let ev = e.process(fingers(3, 0.3 - Float(i) * 0.02, 0.5), time: 0.4 + Double(i) * 0.02) { out.append(ev) }
+        }
+        #expect(out == [.swipe(.left, fingers: 3)])
+    }
+}
+
 @Suite struct MappingTests {
     @Test func defaultMapping() {
         let m = GestureMapping()

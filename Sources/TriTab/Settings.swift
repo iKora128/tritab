@@ -47,6 +47,7 @@ final class Settings {
             "swipeReverse": true,
             // タブ以外の機能は既定で OFF（配布時に「タブ操作アプリ」としてわかりやすくするため）
             "fiveFingerSleep": false,
+            "dragSpaces": false,
             // 日本語入力を使っている人だけ、英数／かな切り替えを最初からオンにする
             "imeCmd": Self.usesJapaneseInput,
             "imeTap": Self.usesJapaneseInput,
@@ -115,6 +116,8 @@ final class Settings {
     var pinchReload: Bool { get { d.bool(forKey: "pinchReload") } set { d.set(newValue, forKey: "pinchReload") } }
     /// 5 本指で上スワイプ → ディスプレイをスリープ
     var fiveFingerSleep: Bool { get { d.bool(forKey: "fiveFingerSleep") } set { d.set(newValue, forKey: "fiveFingerSleep") } }
+    /// ドラッグ中に N 本指で左右へスワイプ → 隣のデスクトップへ（つかんでいるものも一緒に）
+    var dragSpaces: Bool { get { d.bool(forKey: "dragSpaces") } set { d.set(newValue, forKey: "dragSpaces") } }
     /// ⌘ 単体で英数 / かな（左⌘=英数、右⌘=かな）
     var imeCmd: Bool { get { d.bool(forKey: "imeCmd") } set { d.set(newValue, forKey: "imeCmd") } }
     /// N+1 本指タップで英数 / かなを切り替え
@@ -151,6 +154,7 @@ final class Settings {
         var c = GestureEngine.Config()
         c.threshold = sensitivity.threshold
         c.allowReverse = swipeReverse
+        c.holdSwipe = dragSpaces // クリックを押さえている指を数えずに判定する
         return c
     }
 }

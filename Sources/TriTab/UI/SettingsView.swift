@@ -207,6 +207,7 @@ private struct SwipePane: View {
                 Text(L("「3本指のドラッグ」を使っている場合は 4本指にしてください。", "If you use Three Finger Drag, switch to 4 fingers."))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            DragSpaceSection(fingers: fingers)
         }
         .formStyle(.grouped)
     }
