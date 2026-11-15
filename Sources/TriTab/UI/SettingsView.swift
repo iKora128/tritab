@@ -373,12 +373,14 @@ private struct ShelfPane: View {
             Section(L("使い方", "How to Use")) {
                 Step(number: 1, text: L("ファイルをドラッグして少し上へ動かすと、ノッチから棚が顔を出す",
                                         "Drag a file and nudge it upward. The shelf peeks out of the notch."))
-                Step(number: 2, text: L("そのまま上へ持っていき、棚にドロップする",
-                                        "Keep moving up and drop it on the shelf."))
+                Step(number: 2, text: L("棚の左半分に落とすとコピー（元のファイルはそのまま）、右半分に落とすと参照（元の場所のまま）で置ける",
+                                        "Drop it on the left half to add a copy (the original stays put), or on the right half to add a reference (the file stays where it is)."))
                 Step(number: 3, text: L("ノッチにマウスを乗せても棚が開く。開いているあいだは ⌘V でクリップボードの中身を置ける",
                                         "Hovering over the notch also opens the shelf. While it’s open, press ⌘V to add what’s on the clipboard."))
-                Step(number: 4, text: L("棚のファイルを好きな場所へドラッグ。置いたら棚から消えます",
-                                        "Drag files from the shelf to wherever you like. Once dropped, they leave the shelf."))
+                Step(number: 4, text: L("棚のファイルを好きな場所へドラッグすると、そこへ移動して棚から消える。参照なら元のファイル、コピーなら棚の複製が移動する。⌥を押しながらなら複製を置き、棚にも残る",
+                                        "Drag items from the shelf to wherever you like. They move there and leave the shelf: a reference moves the original, a copy moves the shelf’s duplicate. Hold ⌥ to drop a duplicate and keep the item."))
+                Step(number: 5, text: L("⌘クリックや⇧クリック、⌘A でまとめて選べる。右クリックすると「Finder で表示」などのメニューが出る",
+                                        "⌘-click, ⇧-click, or ⌘A selects several items. Right-click for Show in Finder and more."))
             }
         }
         .formStyle(.grouped)

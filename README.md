@@ -40,7 +40,12 @@ Requires macOS 13 Ventura or later, on Apple silicon or Intel. TriTab is signed 
 
 - **⌘ alone for Eisu / Kana**: left ⌘ switches to Eisu (英数), right ⌘ to Kana (かな), like the popular Karabiner-Elements rule.
 - **Four-finger tap to toggle Eisu / Kana**
-- **Notch Shelf**: drag a file and nudge it upward, and a shelf slides out of the notch to hold it for later. Hovering over the notch opens it too, and while it's open you can paste files, images or text with ⌘V.
+- **Notch Shelf**: drag a file and nudge it upward, and a shelf slides out of the notch to hold it for later. Hovering over the notch opens it too.
+  - While you drag, the shelf splits in two. Drop on the left to **add a copy** (the shelf keeps a duplicate and the original stays untouched), or on the right to **add a reference** (the file stays where it is). A badge on each item shows which one it is.
+  - Dragging an item out moves it and takes it off the shelf: a reference moves the original file, a copy moves the shelf's duplicate. Hold ⌥ to drop a duplicate instead and keep the item. Dropping onto another disk, or into an app such as Mail, also leaves a copy and keeps the item.
+  - ⌘-click, ⇧-click or ⌘A selects several items to drag at once. Right-click for Open, Quick Look, Show in Finder, Make a Copy on the Shelf and Remove from Shelf.
+  - While it's open, ⌘V adds what's on the clipboard: files as copies (⌥⌘V as references), images as PNG files, and text as a note.
+  - If you later move a referenced file in Finder, you can still open it from the shelf. If you delete it or move it to the Trash, the item gets a mark.
 - **Five-finger swipe up to sleep the display**
 
 ## Settings
@@ -51,7 +56,7 @@ Choose Settings… (⌘,) from the menu bar icon. The settings window runs in it
 
 - TriTab reads trackpad touches and keyboard and mouse events on your Mac only to recognize gestures and shortcuts. Nothing is recorded or sent anywhere.
 - The only network access is the update check. TriTab downloads `https://github.com/iKora128/tritab/releases/latest/download/appcast.xml` once a day if you allow automatic checks (it asks on the second launch), or when you choose Check for Updates…. There is no analytics and no system profiling.
-- Your data stays on your Mac: settings in `~/Library/Preferences/io.github.ikora128.TriTab.plist`, Notch Shelf memos in `~/Library/Application Support/io.github.ikora128.TriTab`, and temporary shelf files in `~/Library/Caches/io.github.ikora128.TriTab`.
+- Your data stays on your Mac: settings in `~/Library/Preferences/io.github.ikora128.TriTab.plist`; Notch Shelf notes, the list of shelf items, and the copies you put on the shelf (including pasted images) in `~/Library/Application Support/io.github.ikora128.TriTab`. Copies and notes you remove from the shelf go to the Trash. For a reference, TriTab only remembers where the file is (as a bookmark) and never moves or deletes it unless you drag the item out.
 
 ## Build from source
 

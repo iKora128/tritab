@@ -68,13 +68,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                                                 object: nil, queue: .main) { [weak self] note in
                 guard let self, let cmd = note.userInfo?["cmd"] as? String else { return }
                 switch cmd {
-                case "add": self.shelf.add((note.userInfo?["paths"] as? [String] ?? []).map(URL.init(fileURLWithPath:)))
+                case "add": // mode: "copy" ならコピー、それ以外は参照
+                    let mode: ShelfDropMode = (note.userInfo?["mode"] as? String) == "copy" ? .copy : .reference
+                    self.shelf.add((note.userInfo?["paths"] as? [String] ?? []).map(URL.init(fileURLWithPath:)), as: mode)
                 case "open": self.shelf.show(.open)
                 case "large": self.shelf.show(.large)
                 case "close": self.shelf.show(self.shelf.items.isEmpty ? .hidden : .collapsed)
                 case "quicklook": self.shelf.showQuickLook()
                 case "qlclose": QLPreviewPanel.shared()?.orderOut(nil)
                 case "clear": self.shelf.removeAll()
+                case "selectall": self.shelf.selectAll()
                 default: break
                 }
             }
