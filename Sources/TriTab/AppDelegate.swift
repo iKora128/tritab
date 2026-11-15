@@ -22,10 +22,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var updater: SPUStandardUpdaterController!
     /// 見つかったけれど、まだ見てもらっていない新しい版。メニューの先頭で控えめに知らせる
     private var pendingUpdate: String?
+    /// 自動でダウンロードした更新を、使っていない隙に入れる
+    private let quietInstaller = QuietUpdateInstaller()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let wasOnboarded = settings.didOnboard
         Migration.runIfNeeded()
-        updater = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: self)
+        updater = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: self, userDriverDelegate: self)
+        quietInstaller.isBusy = { [weak self] in self?.isBusyForUpdate ?? true }
         // .app として起動したときだけ動かす（swift run などで直接起動すると Info.plist の設定がないため）
         if Bundle.main.bundleURL.pathExtension == "app" { updater.startUpdater() }
         activity = ProcessInfo.processInfo.beginActivity(
@@ -93,6 +97,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // 更新で許可が外れた場合などに、もう一度許可を求める
             KeySender.requestTrust()
         }
+        announceUpdateIfNeeded(wasOnboarded: wasOnboarded)
+    }
+
+    /// 更新して起動し直したときに、新しい版になったことを短く知らせる
+    private func announceUpdateIfNeeded(wasOnboarded: Bool) {
+        let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let last = UserDefaults.standard.string(forKey: "lastLaunchedVersion")
+        guard current != last else { return }
+        UserDefaults.standard.set(current, forKey: "lastLaunchedVersion")
+        // 前の版を覚えていない（0.1.0 から上げた）ときは、案内を済ませていた人を「更新した人」とみなす
+        guard last != nil || wasOnboarded else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            HUD.shared.show(L("TriTab \(current) に更新しました", "Updated to TriTab \(current)"))
+        }
+    }
+
+    /// いま再起動すると困る状態か（自動アップデートを入れるのを待つ）
+    private var isBusyForUpdate: Bool {
+        let me = ProcessInfo.processInfo.processIdentifier
+        let screenOpen = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
+            .contains { $0.processIdentifier != me } // 設定画面・はじめての案内（別プロセス）
+        return touch.currentFingerCount > 0       // トラックパッドに指が触れている
+            || !shelf.items.isEmpty               // 棚の中身は保存していないので、再起動すると消える
+            || MemoEditor.shared.isOpen           // メモを編集している
+            || screenOpen
     }
 
     /// イベントタップはアクセシビリティ許可がないと作れない。許可されるまで数秒おきに試す
@@ -393,6 +422,17 @@ extension AppDelegate: SPUStandardUserDriverDelegate {
 
     func standardUserDriverWillFinishUpdateSession() {
         pendingUpdate = nil
+    }
+}
+
+// 「自動でダウンロードしてインストール」がオンの人の更新は、終了を待たずに、使っていない隙に入れる。
+// YES を返すと Sparkle は入れどきをこちらに任せる（その前に終了されたら、Sparkle が終了時に入れる）
+extension AppDelegate: SPUUpdaterDelegate {
+    func updater(_ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem,
+                 immediateInstallationBlock immediateInstallHandler: @escaping () -> Void) -> Bool {
+        touch.log("更新 \(item.displayVersionString) をダウンロード済み。使っていない隙に入れる")
+        quietInstaller.schedule(immediateInstallHandler)
+        return true
     }
 }
 

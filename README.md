@@ -10,7 +10,7 @@ It uses about 13 MB of memory while running (BetterTouchTool: about 48 MB).
 - **DMG**: download the latest `TriTab-x.y.z.dmg` from [Releases](https://github.com/iKora128/tritab/releases/latest), open it, and drag TriTab to Applications.
 - **Homebrew**: `brew install --cask ikora128/tap/tritab`
 
-Requires macOS 13 Ventura or later, on Apple silicon or Intel. TriTab is signed with a Developer ID, notarized by Apple, and keeps itself up to date.
+Requires macOS 13 Ventura or later, on Apple silicon or Intel. TriTab is signed with a Developer ID, notarized by Apple, and keeps itself up to date. If you allow automatic installation, updates go in while you're not using your Mac, and TriTab restarts itself in about a second.
 
 ## Getting started
 

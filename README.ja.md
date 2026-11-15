@@ -10,7 +10,7 @@
 - **DMG**: [Releases](https://github.com/iKora128/tritab/releases/latest) から最新の `TriTab-x.y.z.dmg` をダウンロードして開き、TriTab を「アプリケーション」へドラッグします。
 - **Homebrew**: `brew install --cask ikora128/tap/tritab`
 
-macOS 13 Ventura 以降（Apple シリコン・Intel）で動きます。Developer ID で署名し、Apple の公証を通してあります。アップデートは自動で届きます。
+macOS 13 Ventura 以降（Apple シリコン・Intel）で動きます。Developer ID で署名し、Apple の公証を通してあります。アップデートは自動で届きます。自動インストールを許可していれば、Mac を使っていない隙に入れて、TriTab が1秒ほどで再起動します。
 
 ## 最初にやること
 
