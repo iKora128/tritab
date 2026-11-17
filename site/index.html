@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TriTab – Three-finger tab control for Mac</title>
+<meta name="description" content="TriTab is a free, open-source menu bar app for Mac. Switch, close, reopen and open browser tabs with three-finger trackpad gestures. About 13 MB, signed and notarized.">
+<meta name="theme-color" content="#FBFAFD" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0C0A11" media="(prefers-color-scheme: dark)">
+<link rel="alternate" hreflang="en" href="./">
+<link rel="alternate" hreflang="ja" href="ja/">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/icon-64.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TriTab">
+<meta property="og:title" content="TriTab – Three-finger tab control for Mac">
+<meta property="og:description" content="Switch, close, reopen and open browser tabs with three-finger trackpad gestures. Free and open source.">
+<meta property="og:image" content="assets/og.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+  // 日本語を優先している人は、はじめて来たときだけ日本語のページへ（言語を選び直したら、その選択を優先する）
+  (function () {
+    try { if (localStorage.getItem("tritab-lang")) return; } catch (e) {}
+    var l = (navigator.languages && navigator.languages[0]) || navigator.language || "";
+    if (/^ja\b/i.test(l)) location.replace("ja/" + location.hash);
+  })();
+</script>
+<script src="assets/main.js" defer></script>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/icon-64.png" width="30" height="30" alt="">TriTab</a>
+    <nav class="nav" aria-label="Main">
+      <a class="opt" href="#gestures">Gestures</a>
+      <a class="opt" href="#extras">Extras</a>
+      <a class="opt" href="#faq">FAQ</a>
+      <a class="gh" href="https://github.com/iKora128/tritab"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg><span class="opt">GitHub</span></a>
+      <a class="lang" href="ja/" lang="ja" hreflang="ja" data-set-lang="ja">日本語</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <img class="hero-icon" src="assets/icon-256.png" width="128" height="128" alt="TriTab app icon">
+    <h1>Three-finger <span class="grad nw">tab control</span> for Mac</h1>
+    <p class="lead">Switch, close, reopen and open browser tabs with a swipe of three fingers. TriTab is a small menu bar app, free and open source.</p>
+    <div class="cta">
+      <a class="btn btn-main" data-download href="https://github.com/iKora128/tritab/releases/latest">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9.5m0 0-4-4m4 4 4-4M4 16h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Download for Mac
+      </a>
+      <button class="cmd" type="button" data-copy="brew install --cask ikora128/tap/tritab" aria-label="Copy the Homebrew command">
+        <code>brew install --cask ikora128/tap/tritab</code>
+        <span class="copy" aria-hidden="true">
+          <svg class="cp" viewBox="0 0 20 20"><rect x="7" y="7" width="9.5" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+          <svg class="ok" viewBox="0 0 20 20"><path d="m5 10.5 3.2 3.2L15 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+      </button>
+    </div>
+    <p class="meta"><span data-version>Latest version</span><span>macOS&nbsp;13 or later</span><span>Apple silicon and Intel</span></p>
+
+    <div class="demo" id="demo" aria-hidden="true">
+      <div class="laptop">
+      <div class="screen">
+        <div class="display">
+          <div class="menubar"><i></i><i></i><i></i><i></i><span class="right"><span class="tri"></span><i></i><i></i></span></div>
+          <div class="notch"></div>
+          <div class="win" style="--c:#60A5FA">
+            <div class="bar">
+              <span class="lights"><i></i><i></i><i></i></span>
+              <div class="tabs" data-new-title="New Tab">
+                <div class="tab on" style="--c:#60A5FA" data-layout="list"><i class="fav"></i><span>Inbox</span></div>
+                <div class="tab" style="--c:#F59E0B" data-layout="doc"><i class="fav"></i><span>Docs</span></div>
+                <div class="tab" style="--c:#A78BFA" data-layout="photos"><i class="fav"></i><span>Photos</span></div>
+                <div class="tab" style="--c:#FB7185" data-layout="video"><i class="fav"></i><span>Videos</span></div>
+              </div>
+            </div>
+            <div class="addr"><i></i></div>
+            <div class="page" data-layout="list">
+              <div class="load"></div>
+              <div class="view v-list">
+                <div class="ttl"></div>
+                <div class="row"><i class="av"></i><div><div class="sk w50"></div><div class="sk w85"></div></div></div>
+                <div class="row"><i class="av"></i><div><div class="sk w70"></div><div class="sk w85"></div></div></div>
+                <div class="row"><i class="av"></i><div><div class="sk w50"></div><div class="sk w70"></div></div></div>
+                <div class="row"><i class="av"></i><div><div class="sk w70"></div><div class="sk w85"></div></div></div>
+              </div>
+              <div class="view v-doc">
+                <div class="ttl"></div>
+                <div class="cols">
+                  <div><div class="sk"></div><div class="sk w85"></div><div class="sk"></div><div class="sk w70"></div><div class="sk"></div><div class="sk w50"></div></div>
+                  <div class="pic"></div>
+                </div>
+              </div>
+              <div class="view v-photos">
+                <div class="ttl"></div>
+                <div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              </div>
+              <div class="view v-video">
+                <div class="player"><b></b></div>
+                <div class="sk w70"></div><div class="sk w50"></div>
+              </div>
+              <div class="view v-new">
+                <div class="search"></div>
+                <div class="favs"><i style="--c:#60A5FA"></i><i style="--c:#F59E0B"></i><i style="--c:#A78BFA"></i><i style="--c:#FB7185"></i><i style="--c:#30D158"></i><i style="--c:#C084FC"></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="hud"><span class="hud-keys"></span><span class="hud-what"></span></div>
+        </div>
+      </div>
+        <div class="base"></div>
+      </div>
+      <div class="below">
+        <div class="pad big" data-g="left">
+          <div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span><span class="f f4"><i class="t"></i></span></div>
+        </div>
+        <p class="caption"><b>Swipe left</b><span class="arr">→</span><span>Next tab</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="gestures" class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Gestures</p>
+      <h2>One swipe, one tab.</h2>
+      <p>All with three fingers. Slow drifts and re-placed fingers don’t trigger anything, and two-finger scrolling won’t flip a page back by accident while you swipe.</p>
+    </div>
+    <div class="gestures">
+      <div class="g"><div class="pad" data-g="left"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">Swipe left</p><h3>Next tab</h3><p class="sc"><kbd>⌃</kbd><kbd>Tab</kbd></p></div>
+      <div class="g"><div class="pad" data-g="right"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">Swipe right</p><h3>Previous tab</h3><p class="sc"><kbd>⌃</kbd><kbd>⇧</kbd><kbd>Tab</kbd></p></div>
+      <div class="g"><div class="pad" data-g="down"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">Swipe down</p><h3>Close tab</h3><p class="sc"><kbd>⌘</kbd><kbd>W</kbd></p></div>
+      <div class="g"><div class="pad" data-g="up"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">Swipe up</p><h3>Reopen closed tab</h3><p class="sc"><kbd>⇧</kbd><kbd>⌘</kbd><kbd>T</kbd></p></div>
+      <div class="g"><div class="pad" data-g="tap"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">Tap</p><h3>New tab</h3><p class="sc"><kbd>⌘</kbd><kbd>T</kbd></p></div>
+      <div class="g"><div class="pad" data-g="click"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">Click (press down)</p><h3>Open link in a new tab</h3><p class="sc"><kbd>⌘</kbd><span>+ click</span></p></div>
+      <div class="g"><div class="pad" data-g="click4"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span><span class="f f4"><i class="t"></i></span></div></div><p class="how">Click with 4 fingers</p><h3>Reopen closed tab</h3><p class="sc"><kbd>⇧</kbd><kbd>⌘</kbd><kbd>T</kbd></p></div>
+      <div class="g"><div class="pad" data-g="pinch"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">Pinch with thumb and 2 fingers</p><h3>Reload</h3><p class="sc"><kbd>⌘</kbd><kbd>R</kbd></p></div>
+    </div>
+    <p class="fine">Each gesture presses the app’s own shortcut for you. The keys above are for Safari and Chrome; in Firefox and VS Code, for example, TriTab sends ⌥⌘→ instead.</p>
+    <p class="fine">Use Three Finger Drag? Switch TriTab to four fingers in Settings, and every gesture uses one more finger.</p>
+  </div>
+</section>
+
+<section id="apps">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Works with</p>
+      <h2>Made for browsers. Handy in editors and terminals.</h2>
+      <p>TriTab sends the right shortcut for each app, like ⌥⌘↓ in Arc and ⌥⌘→ in VS Code.</p>
+    </div>
+    <div class="apps">
+      <div class="app-group">
+        <h3>Browsers</h3>
+        <ul class="chips"><li>Safari</li><li>Google Chrome</li><li>Arc</li><li>Firefox</li><li>Microsoft Edge</li><li>Brave</li><li>Vivaldi</li><li>Opera</li><li>Orion</li><li>Zen</li><li>Dia</li><li>Chromium</li></ul>
+      </div>
+      <div class="app-group">
+        <h3>Code editors</h3>
+        <ul class="chips"><li>Visual Studio Code</li><li>Cursor</li><li>Windsurf</li></ul>
+      </div>
+      <div class="app-group">
+        <h3>Terminals and Finder</h3>
+        <ul class="chips"><li>Terminal</li><li>iTerm2</li><li>Ghostty</li><li>Warp</li><li>Finder</li></ul>
+      </div>
+    </div>
+    <p class="fine">In terminals you can switch and open tabs; closing and reopening are turned off. Slack, Discord and Mail are left alone. Other apps get ⌃Tab, ⌘W and ⇧⌘T.</p>
+  </div>
+</section>
+
+<section id="extras" class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Extras</p>
+      <h2>A few more tricks for your trackpad.</h2>
+      <p>All off by default. Turn on the ones you want in Settings.</p>
+    </div>
+    <div class="extras">
+      <article class="x">
+        <div class="ill" aria-hidden="true">
+          <div class="shelf">
+            <div class="shelf-top"><span class="seg"><b>Copy</b><b class="on">Reference</b></span><span class="shelf-btns"><i></i><i></i></span></div>
+            <div class="shelf-items">
+              <div class="it"><div class="th doc"><i class="badge"></i></div><span>Report.pdf</span></div>
+              <div class="it sel"><div class="th img"><i class="badge copy"></i></div><span>Sunset.heic</span></div>
+              <div class="it"><div class="th stack"><em>3</em><i class="badge"></i></div><span>3 files</span></div>
+              <div class="it"><div class="th note"></div><span>Note.txt</span></div>
+            </div>
+          </div>
+          <svg class="drag-arrow" viewBox="0 0 64 56" fill="none"><path d="M60 52C44 50 22 40 12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M5 19 11 9l9 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div class="drag"></div>
+        </div>
+        <div class="body">
+          <h3>Notch Shelf</h3>
+          <p>Drag a file up to the notch to park it for later. One switch decides whether it’s added as a reference or a copy. Drop several files at once and they become one stack. Right-click for Quick Look or Show in Finder. The shelf keeps its items after a restart.</p>
+        </div>
+      </article>
+      <article class="x">
+        <div class="ill" aria-hidden="true">
+          <div class="desks">
+            <div class="desk d1"><div class="mini-win ghost"></div></div>
+            <div class="desk d2"><div class="mini-win"></div></div>
+          </div>
+          <span class="hop">›</span>
+        </div>
+        <div class="body">
+          <h3>Swipe while dragging</h3>
+          <p>Hold a window or file with one finger and swipe with three others to move to the next desktop. Whatever you’re holding comes along.</p>
+        </div>
+      </article>
+      <article class="x">
+        <div class="ill" aria-hidden="true">
+          <div class="keys">
+            <div class="key"><div class="sym">⌘</div><div class="nm">command</div><em>英数 Eisu</em></div>
+            <div class="spacebar"></div>
+            <div class="key r"><div class="sym">⌘</div><div class="nm">command</div><em>かな Kana</em></div>
+          </div>
+        </div>
+        <div class="body">
+          <h3>⌘ alone for Eisu / Kana</h3>
+          <p>For Japanese input. Press left ⌘ by itself for Eisu and right ⌘ for Kana, like the popular Karabiner-Elements rule. A four-finger tap switches between them too.</p>
+        </div>
+      </article>
+      <article class="x">
+        <div class="ill" aria-hidden="true">
+          <div class="mon"><div class="mon-screen"><span class="moon"></span></div></div>
+          <div class="five"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="body">
+          <h3>Five fingers to sleep the display</h3>
+          <p>Swipe up with five fingers and the display goes to sleep right away. Handy when you step away from your desk.</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Why TriTab</p>
+      <h2>Small, private, and open.</h2>
+    </div>
+    <div class="values">
+      <div class="v">
+        <div class="big grad">13&nbsp;MB</div>
+        <h3>Light</h3>
+        <p>About 13&nbsp;MB of memory while it runs. The settings window opens in its own process and quits when you close it.</p>
+      </div>
+      <div class="v">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg></div>
+        <h3>Private</h3>
+        <p>Touches and keys are read on your Mac only to recognize gestures. Nothing is recorded or sent. The only network request is the update check.</p>
+      </div>
+      <div class="v">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 19 6v5.5c0 4.3-2.9 7.9-7 9.5-4.1-1.6-7-5.2-7-9.5V6l7-3Z"/><path d="m8.8 12.2 2.2 2.2 4.3-4.5"/></svg></div>
+        <h3>Signed and notarized</h3>
+        <p>Signed with a Developer ID and notarized by Apple. Updates arrive on their own and, if you allow it, install while you’re away.</p>
+      </div>
+      <div class="v">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 7.5 4 12l4.5 4.5M15.5 7.5 20 12l-4.5 4.5M13.5 5l-3 14"/></svg></div>
+        <h3>Open source</h3>
+        <p>MIT licensed. Read the code, open an issue, or build it yourself with just the Command Line Tools.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="start" class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Get started</p>
+      <h2>Up and running in a minute.</h2>
+    </div>
+    <ol class="steps">
+      <li><span class="n">1</span><h3>Install</h3><p>Open the DMG and drag TriTab to Applications, or install it with Homebrew.</p></li>
+      <li><span class="n">2</span><h3>Allow Accessibility</h3><p>TriTab needs it to send shortcuts like ⌃Tab and ⌘W to the app you’re using. It asks on first launch.</p></li>
+      <li><span class="n">3</span><h3>Free up three fingers</h3><p>Move macOS’s own three-finger gestures to four fingers. TriTab shows you where, and tells you if anything still conflicts.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">FAQ</p>
+      <h2>Questions</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>Can I use it alongside BetterTouchTool or other gesture apps?</summary>
+        <p>Yes. If the same gesture is set up in both, though, both will act on it, so turn it off in one of them. TriTab tells you when macOS’s own trackpad gestures overlap with its own.</p>
+      </details>
+      <details>
+        <summary>I use Three Finger Drag. Can I still use TriTab?</summary>
+        <p>Yes. Switch TriTab to four fingers in Settings. Every gesture then uses one more finger.</p>
+      </details>
+      <details>
+        <summary>Why does it need Accessibility access?</summary>
+        <p>To send keyboard shortcuts such as ⌃Tab and ⌘W to the app in front, and to notice clicks and the ⌘ key. What it reads never leaves your Mac.</p>
+      </details>
+      <details>
+        <summary>Why isn’t it on the Mac App Store?</summary>
+        <p>TriTab reads the trackpad through a private macOS framework, which the App Store doesn’t allow. The download is signed with a Developer ID and notarized by Apple.</p>
+      </details>
+      <details>
+        <summary>How do I uninstall it?</summary>
+        <p>Quit TriTab from its menu bar icon and move it to the Trash. If you installed it with Homebrew, run <code>brew uninstall --cask tritab</code> (add <code>--zap</code> to remove its settings too).</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <div class="final-card">
+      <img src="assets/icon-256.png" width="96" height="96" alt="">
+      <h2>Give your tabs a swipe.</h2>
+      <p>Free and open source. Requires macOS&nbsp;13 or later.</p>
+      <div class="cta">
+        <a class="btn btn-light" data-download href="https://github.com/iKora128/tritab/releases/latest">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9.5m0 0-4-4m4 4 4-4M4 16h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Download for Mac
+        </a>
+        <button class="cmd" type="button" data-copy="brew install --cask ikora128/tap/tritab" aria-label="Copy the Homebrew command">
+          <code>brew install --cask ikora128/tap/tritab</code>
+          <span class="copy" aria-hidden="true">
+            <svg class="cp" viewBox="0 0 20 20"><rect x="7" y="7" width="9.5" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+            <svg class="ok" viewBox="0 0 20 20"><path d="m5 10.5 3.2 3.2L15 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>© 2026 Daichi Nagashima · MIT License</p>
+    <nav aria-label="Footer">
+      <a href="https://github.com/iKora128/tritab">GitHub</a>
+      <a href="https://github.com/iKora128/tritab/releases">Releases</a>
+      <a href="https://github.com/iKora128/tritab/issues">Feedback</a>
+      <a href="ja/" lang="ja" hreflang="ja" data-set-lang="ja">日本語</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>

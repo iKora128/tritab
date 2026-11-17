@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TriTab｜3本指で、タブを自在に。</title>
+<meta name="description" content="TriTab は、トラックパッドの3本指ジェスチャーでブラウザのタブを切り替えたり、閉じたり、復元したりできる Mac のメニューバーアプリです。無料のオープンソース。常駐メモリは約 13 MB、署名・公証済み。">
+<meta name="theme-color" content="#FBFAFD" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0C0A11" media="(prefers-color-scheme: dark)">
+<link rel="alternate" hreflang="en" href="../">
+<link rel="alternate" hreflang="ja" href="./">
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/icon-64.png">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TriTab">
+<meta property="og:title" content="TriTab｜3本指で、タブを自在に。">
+<meta property="og:description" content="3本指のスワイプで、ブラウザのタブを切り替え、閉じ、復元。Mac 用の無料のオープンソースアプリです。">
+<meta property="og:image" content="../assets/og.png">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/main.js" defer></script>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../assets/icon-64.png" width="30" height="30" alt="">TriTab</a>
+    <nav class="nav" aria-label="メイン">
+      <a class="opt" href="#gestures">ジェスチャー</a>
+      <a class="opt" href="#extras">便利機能</a>
+      <a class="opt" href="#faq">よくある質問</a>
+      <a class="gh" href="https://github.com/iKora128/tritab"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg><span class="opt">GitHub</span></a>
+      <a class="lang" href="../" lang="en" hreflang="en" data-set-lang="en">English</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <img class="hero-icon" src="../assets/icon-256.png" width="128" height="128" alt="TriTab のアイコン">
+    <h1>3本指で、<wbr><span class="grad">タブを自在に。</span></h1>
+    <p class="lead">トラックパッドを<wbr>3本指で<wbr>スワイプするだけで、<wbr>ブラウザのタブを<wbr>切り替えたり、<wbr>閉じたり、<wbr>閉じたタブを<wbr>戻したり<wbr>できます。<wbr>メニューバーに入る<wbr>小さなアプリで、<wbr>無料の<wbr>オープンソースです。</p>
+    <div class="cta">
+      <a class="btn btn-main" data-download href="https://github.com/iKora128/tritab/releases/latest">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9.5m0 0-4-4m4 4 4-4M4 16h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Mac 用をダウンロード
+      </a>
+      <button class="cmd" type="button" data-copy="brew install --cask ikora128/tap/tritab" aria-label="Homebrew のコマンドをコピー">
+        <code>brew install --cask ikora128/tap/tritab</code>
+        <span class="copy" aria-hidden="true">
+          <svg class="cp" viewBox="0 0 20 20"><rect x="7" y="7" width="9.5" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+          <svg class="ok" viewBox="0 0 20 20"><path d="m5 10.5 3.2 3.2L15 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+      </button>
+    </div>
+    <p class="meta"><span data-version>最新版</span><span>macOS&nbsp;13 以降</span><span>Apple シリコン・Intel</span></p>
+
+    <div class="demo" id="demo" aria-hidden="true">
+      <div class="laptop">
+      <div class="screen">
+        <div class="display">
+          <div class="menubar"><i></i><i></i><i></i><i></i><span class="right"><span class="tri"></span><i></i><i></i></span></div>
+          <div class="notch"></div>
+          <div class="win" style="--c:#60A5FA">
+            <div class="bar">
+              <span class="lights"><i></i><i></i><i></i></span>
+              <div class="tabs" data-new-title="新しいタブ">
+                <div class="tab on" style="--c:#60A5FA" data-layout="list"><i class="fav"></i><span>受信トレイ</span></div>
+                <div class="tab" style="--c:#F59E0B" data-layout="doc"><i class="fav"></i><span>ドキュメント</span></div>
+                <div class="tab" style="--c:#A78BFA" data-layout="photos"><i class="fav"></i><span>写真</span></div>
+                <div class="tab" style="--c:#FB7185" data-layout="video"><i class="fav"></i><span>動画</span></div>
+              </div>
+            </div>
+            <div class="addr"><i></i></div>
+            <div class="page" data-layout="list">
+              <div class="load"></div>
+              <div class="view v-list">
+                <div class="ttl"></div>
+                <div class="row"><i class="av"></i><div><div class="sk w50"></div><div class="sk w85"></div></div></div>
+                <div class="row"><i class="av"></i><div><div class="sk w70"></div><div class="sk w85"></div></div></div>
+                <div class="row"><i class="av"></i><div><div class="sk w50"></div><div class="sk w70"></div></div></div>
+                <div class="row"><i class="av"></i><div><div class="sk w70"></div><div class="sk w85"></div></div></div>
+              </div>
+              <div class="view v-doc">
+                <div class="ttl"></div>
+                <div class="cols">
+                  <div><div class="sk"></div><div class="sk w85"></div><div class="sk"></div><div class="sk w70"></div><div class="sk"></div><div class="sk w50"></div></div>
+                  <div class="pic"></div>
+                </div>
+              </div>
+              <div class="view v-photos">
+                <div class="ttl"></div>
+                <div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              </div>
+              <div class="view v-video">
+                <div class="player"><b></b></div>
+                <div class="sk w70"></div><div class="sk w50"></div>
+              </div>
+              <div class="view v-new">
+                <div class="search"></div>
+                <div class="favs"><i style="--c:#60A5FA"></i><i style="--c:#F59E0B"></i><i style="--c:#A78BFA"></i><i style="--c:#FB7185"></i><i style="--c:#30D158"></i><i style="--c:#C084FC"></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="hud"><span class="hud-keys"></span><span class="hud-what"></span></div>
+        </div>
+      </div>
+        <div class="base"></div>
+      </div>
+      <div class="below">
+        <div class="pad big" data-g="left">
+          <div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span><span class="f f4"><i class="t"></i></span></div>
+        </div>
+        <p class="caption"><b>左へスワイプ</b><span class="arr">→</span><span>次のタブ</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="gestures" class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">ジェスチャー</p>
+      <h2>1回のスワイプで、<wbr>タブを<span class="nw">1つ</span>。</h2>
+      <p>どれも<span class="nw">3本指</span>で操作します。ゆっくり指がずれたときや、指を置き直したときには反応しません。スワイプ中は、<span class="nw">2本指</span>スクロールで誤ってページが戻らないようにしています。</p>
+    </div>
+    <div class="gestures">
+      <div class="g"><div class="pad" data-g="left"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">左へスワイプ</p><h3>次のタブ</h3><p class="sc"><kbd>⌃</kbd><kbd>Tab</kbd></p></div>
+      <div class="g"><div class="pad" data-g="right"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">右へスワイプ</p><h3>前のタブ</h3><p class="sc"><kbd>⌃</kbd><kbd>⇧</kbd><kbd>Tab</kbd></p></div>
+      <div class="g"><div class="pad" data-g="down"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">下へスワイプ</p><h3>タブを閉じる</h3><p class="sc"><kbd>⌘</kbd><kbd>W</kbd></p></div>
+      <div class="g"><div class="pad" data-g="up"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">上へスワイプ</p><h3>閉じたタブを復元</h3><p class="sc"><kbd>⇧</kbd><kbd>⌘</kbd><kbd>T</kbd></p></div>
+      <div class="g"><div class="pad" data-g="tap"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">タップ</p><h3>新しいタブ</h3><p class="sc"><kbd>⌘</kbd><kbd>T</kbd></p></div>
+      <div class="g"><div class="pad" data-g="click"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">クリック（押し込む）</p><h3>リンクを<wbr>新しいタブで<wbr>開く</h3><p class="sc"><kbd>⌘</kbd><span>＋クリック</span></p></div>
+      <div class="g"><div class="pad" data-g="click4"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span><span class="f f4"><i class="t"></i></span></div></div><p class="how">4本指でクリック</p><h3>閉じたタブを復元</h3><p class="sc"><kbd>⇧</kbd><kbd>⌘</kbd><kbd>T</kbd></p></div>
+      <div class="g"><div class="pad" data-g="pinch"><div class="fingers"><span class="f f1"><i class="t"></i></span><span class="f f2"><i class="t"></i></span><span class="f f3"><i class="t"></i></span></div></div><p class="how">親指と<span class="nw">2本指</span>でつまむ</p><h3>再読み込み</h3><p class="sc"><kbd>⌘</kbd><kbd>R</kbd></p></div>
+    </div>
+    <p class="fine">どのジェスチャーも、そのアプリの<wbr>ショートカットを<wbr>代わりに<wbr>押しています。上のキーは Safari や Chrome の場合で、Firefox や VS Code では ⌥⌘→ <span class="nw">などを送ります。</span></p>
+    <p class="fine"><span class="nw">3本指</span>の<wbr>ドラッグを<wbr>使っている場合は、設定で<wbr><span class="nw">4本指</span>モードに<wbr>してください。すべての<wbr>ジェスチャーが<wbr><span class="nw">1本ずつ</span>増えます。</p>
+  </div>
+</section>
+
+<section id="apps">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">対応アプリ</p>
+      <h2>ブラウザはもちろん、<wbr>エディタや<wbr>ターミナルでも。</h2>
+      <p>アプリごとに合ったショートカットを送ります。たとえば Arc では ⌥⌘↓、VS Code では ⌥⌘→ を使います。</p>
+    </div>
+    <div class="apps">
+      <div class="app-group">
+        <h3>ブラウザ</h3>
+        <ul class="chips"><li>Safari</li><li>Google Chrome</li><li>Arc</li><li>Firefox</li><li>Microsoft Edge</li><li>Brave</li><li>Vivaldi</li><li>Opera</li><li>Orion</li><li>Zen</li><li>Dia</li><li>Chromium</li></ul>
+      </div>
+      <div class="app-group">
+        <h3>コードエディタ</h3>
+        <ul class="chips"><li>Visual Studio Code</li><li>Cursor</li><li>Windsurf</li></ul>
+      </div>
+      <div class="app-group">
+        <h3>ターミナルと Finder</h3>
+        <ul class="chips"><li>ターミナル</li><li>iTerm2</li><li>Ghostty</li><li>Warp</li><li>Finder</li></ul>
+      </div>
+    </div>
+    <p class="fine">ターミナルでは、タブの切り替えと新規作成だけが動きます（閉じる・復元はオフ）。Slack・Discord・メールでは何もしません。そのほかのアプリには ⌃Tab・⌘W・⇧⌘T を送ります。</p>
+  </div>
+</section>
+
+<section id="extras" class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">便利機能</p>
+      <h2>トラックパッドで、<wbr>もう少し便利に。</h2>
+      <p>どれも最初はオフです。使いたいものだけ、設定でオンにしてください。</p>
+    </div>
+    <div class="extras">
+      <article class="x">
+        <div class="ill" aria-hidden="true">
+          <div class="shelf">
+            <div class="shelf-top"><span class="seg"><b>コピー</b><b class="on">参照</b></span><span class="shelf-btns"><i></i><i></i></span></div>
+            <div class="shelf-items">
+              <div class="it"><div class="th doc"><i class="badge"></i></div><span>資料.pdf</span></div>
+              <div class="it sel"><div class="th img"><i class="badge copy"></i></div><span>夕焼け.heic</span></div>
+              <div class="it"><div class="th stack"><em>3</em><i class="badge"></i></div><span>3 項目</span></div>
+              <div class="it"><div class="th note"></div><span>メモ.txt</span></div>
+            </div>
+          </div>
+          <svg class="drag-arrow" viewBox="0 0 64 56" fill="none"><path d="M60 52C44 50 22 40 12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M5 19 11 9l9 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div class="drag"></div>
+        </div>
+        <div class="body">
+          <h3>ノッチの棚</h3>
+          <p>ファイルをノッチまでドラッグすると、棚に一時置きできます。参照で置くかコピーで置くかは、スイッチ<span class="nw">1つ</span>で切り替え。一度に落とした複数のファイルは<span class="nw">1つ</span>のまとめになり、右クリックで Quick Look や「Finder で表示」も使えます。再起動しても中身は残ります。</p>
+        </div>
+      </article>
+      <article class="x">
+        <div class="ill" aria-hidden="true">
+          <div class="desks">
+            <div class="desk d1"><div class="mini-win ghost"></div></div>
+            <div class="desk d2"><div class="mini-win"></div></div>
+          </div>
+          <span class="hop">›</span>
+        </div>
+        <div class="body">
+          <h3>ドラッグ中に左右へスワイプ</h3>
+          <p>ウィンドウやファイルを<span class="nw">1本の指</span>で押さえたまま、ほかの<span class="nw">3本指</span>で払うと、隣のデスクトップへ移ります。つかんでいるものも一緒に移ります。</p>
+        </div>
+      </article>
+      <article class="x">
+        <div class="ill" aria-hidden="true">
+          <div class="keys">
+            <div class="key"><div class="sym">⌘</div><div class="nm">command</div><em>英数</em></div>
+            <div class="spacebar"></div>
+            <div class="key r"><div class="sym">⌘</div><div class="nm">command</div><em>かな</em></div>
+          </div>
+        </div>
+        <div class="body">
+          <h3>⌘単体で英数／かな</h3>
+          <p>左の⌘だけを押すと英数、右の⌘だけを押すとかな。Karabiner-Elements の定番ルールと同じ動きです。<span class="nw">4本指</span>タップでも切り替えられます。</p>
+        </div>
+      </article>
+      <article class="x">
+        <div class="ill" aria-hidden="true">
+          <div class="mon"><div class="mon-screen"><span class="moon"></span></div></div>
+          <div class="five"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="body">
+          <h3>5本指でディスプレイをスリープ</h3>
+          <p>5本指で上へスワイプすると、ディスプレイがすぐにスリープします。席を外すときに便利です。</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">特長</p>
+      <h2>軽くて、<wbr>安心。</h2>
+    </div>
+    <div class="values">
+      <div class="v">
+        <div class="big grad">13&nbsp;MB</div>
+        <h3>軽い</h3>
+        <p>常駐時のメモリは約 13&nbsp;MB。設定画面は別のプロセスで開き、閉じれば終了します。</p>
+      </div>
+      <div class="v">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg></div>
+        <h3>プライバシー</h3>
+        <p>タッチやキー入力は、ジェスチャーを判定するために Mac の中で読むだけです。記録も送信もしません。通信はアップデートの確認だけです。</p>
+      </div>
+      <div class="v">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 19 6v5.5c0 4.3-2.9 7.9-7 9.5-4.1-1.6-7-5.2-7-9.5V6l7-3Z"/><path d="m8.8 12.2 2.2 2.2 4.3-4.5"/></svg></div>
+        <h3>署名・公証済み</h3>
+        <p>Developer ID で署名し、Apple の公証を通しています。アップデートは自動で届き、許可すれば Mac を使っていない隙に入ります。</p>
+      </div>
+      <div class="v">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 7.5 4 12l4.5 4.5M15.5 7.5 20 12l-4.5 4.5M13.5 5l-3 14"/></svg></div>
+        <h3>オープンソース</h3>
+        <p>MIT ライセンスです。コードを読むことも、Issue を送ることも、Command Line Tools だけで自分でビルドすることもできます。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="start" class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">はじめかた</p>
+      <h2>1分で<wbr>使いはじめられます。</h2>
+    </div>
+    <ol class="steps">
+      <li><span class="n">1</span><h3>インストール</h3><p>DMG を開いて、TriTab を「アプリケーション」へドラッグします。Homebrew でも入れられます。</p></li>
+      <li><span class="n">2</span><h3>アクセシビリティを許可</h3><p>使っているアプリに ⌃Tab や ⌘W などのショートカットを送るために必要です。初回起動時に案内します。</p></li>
+      <li><span class="n">3</span><h3>3本指をあける</h3><p>macOS 標準の<span class="nw">3本指</span>ジェスチャーを<span class="nw">4本指</span>に移します。どこを変えればいいかは TriTab が案内し、ぶつかる設定が残っていれば知らせます。</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">FAQ</p>
+      <h2>よくある質問</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>BetterTouchTool などと一緒に使えますか？</summary>
+        <p>使えます。ただし同じジェスチャーを両方に設定していると両方が動くので、どちらか一方でオフにしてください。macOS 標準のトラックパッドのジェスチャーとぶつかる場合は、TriTab が知らせます。</p>
+      </details>
+      <details>
+        <summary>3本指のドラッグを使っています。TriTab は使えますか？</summary>
+        <p>使えます。設定で TriTab を<span class="nw">4本指</span>モードにしてください。すべてのジェスチャーが<span class="nw">1本ずつ</span>増えます。</p>
+      </details>
+      <details>
+        <summary>なぜアクセシビリティの許可が必要なのですか？</summary>
+        <p>前面のアプリに ⌃Tab や ⌘W などのショートカットを送り、クリックや ⌘キーの操作を知るためです。読み取った内容が Mac の外に出ることはありません。</p>
+      </details>
+      <details>
+        <summary>Mac App Store にはないのですか？</summary>
+        <p>トラックパッドのタッチを読むのに macOS の非公開の仕組みを使っているため、App Store では配布できません。ダウンロード版は Developer ID で署名し、Apple の公証を通しています。</p>
+      </details>
+      <details>
+        <summary>アンインストールするには？</summary>
+        <p>メニューバーのアイコンから TriTab を終了し、ゴミ箱に入れてください。Homebrew で入れた場合は <code>brew uninstall --cask tritab</code> を実行します（<code>--zap</code> を付けると設定も消えます）。</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <div class="final-card">
+      <img src="../assets/icon-256.png" width="96" height="96" alt="">
+      <h2>3本指で、<wbr>試してみてください。</h2>
+      <p>無料のオープンソース。<span class="nw">macOS&nbsp;13 以降</span>で動きます。</p>
+      <div class="cta">
+        <a class="btn btn-light" data-download href="https://github.com/iKora128/tritab/releases/latest">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9.5m0 0-4-4m4 4 4-4M4 16h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Mac 用をダウンロード
+        </a>
+        <button class="cmd" type="button" data-copy="brew install --cask ikora128/tap/tritab" aria-label="Homebrew のコマンドをコピー">
+          <code>brew install --cask ikora128/tap/tritab</code>
+          <span class="copy" aria-hidden="true">
+            <svg class="cp" viewBox="0 0 20 20"><rect x="7" y="7" width="9.5" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+            <svg class="ok" viewBox="0 0 20 20"><path d="m5 10.5 3.2 3.2L15 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>© 2026 Daichi Nagashima · MIT ライセンス</p>
+    <nav aria-label="フッター">
+      <a href="https://github.com/iKora128/tritab">GitHub</a>
+      <a href="https://github.com/iKora128/tritab/releases">リリース</a>
+      <a href="https://github.com/iKora128/tritab/issues">フィードバック</a>
+      <a href="../" lang="en" hreflang="en" data-set-lang="en">English</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>
