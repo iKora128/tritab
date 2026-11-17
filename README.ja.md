@@ -74,7 +74,7 @@ macOS 13 Ventura 以降（Apple シリコン・Intel）で動きます。Develop
 TRITAB_DEBUG=1 /Applications/TriTab.app/Contents/MacOS/TriTab  # ログを出しながら起動
 ```
 
-Xcode は不要で、Command Line Tools だけでビルドできます。開発用の証明書で署名すると、ビルドし直してもアクセシビリティの許可が外れません。配布用のビルドの手順は [docs/RELEASE.md](docs/RELEASE.md) にあります。
+Xcode は不要で、Command Line Tools だけでビルドできます。`build-app.sh` は、Developer ID Application の証明書があればそれで、なければ開発用の証明書で署名します。どちらの場合も、ビルドし直してもアクセシビリティの許可は外れません。ただし macOS は、アプリごとに最後に許可した署名しか覚えません。署名の違うビルド（配布版と、開発用の証明書で署名したビルドなど）に入れ替えたときは、システム設定のアクセシビリティの一覧から TriTab を削除して、許可し直してください。配布用のビルドの手順は [docs/RELEASE.md](docs/RELEASE.md) にあります。
 
 ## 仕組み
 

@@ -1,6 +1,7 @@
 #!/bin/zsh
 # 開発用の自己署名証明書「Swiper Local Dev」を専用キーチェーン (~/.swiper-dev) に作る。
 # これで署名すると、ビルドし直してもアクセシビリティの許可が外れない（ad-hoc だと毎回外れる）。
+# Developer ID Application の証明書がある Mac では要らない（build-app.sh はそちらを優先し、配布版と許可を共有できる）。
 # ログインキーチェーンには何も入れない。消すときは:
 #   security delete-keychain ~/.swiper-dev/swiper-dev.keychain-db && rm -rf ~/.swiper-dev
 set -euo pipefail

@@ -103,10 +103,17 @@ rm ~/Desktop/tritab-sparkle-key.txt
 - **公証で失敗した**: `xcrun notarytool log <提出ID> --keychain-profile TriTab` で理由が見られます。
 - **「開発元を確認できません」と出る**: `spctl --assess --type execute --verbose=2 build/TriTab.app` で、署名と公証の状態を確認します。
 - **アップデート後にアクセシビリティの許可が外れる**: 署名の証明書かバンドル ID が前の版と違います。どちらも毎回同じにしてください。
+- **アクセシビリティの許可はオンなのに動かない**: 署名の違うビルドに入れ替えた可能性があります（配布版と、自己署名や ad-hoc の開発用ビルドなど）。macOS は、アプリごとに最後に許可した署名しか覚えません。システム設定のアクセシビリティの一覧から TriTab を削除（−）して、許可し直してください。
 - **「Sparkle の署名鍵が Info.plist の SUPublicEDKey と合いません」**: キーチェーンに鍵がないか、違う鍵です。手順 3 のバックアップから取り込んでください。鍵を作り直して `SUPublicEDKey` を変えると、それより前の版の利用者にはアップデートが届きません。
 
 ## 補足: 開発用の署名
 
-`scripts/setup-dev-signing.sh` は、開発中に作り直してもアクセシビリティの許可が外れないようにするための、自分の Mac 専用の自己署名証明書（「Swiper Local Dev」、旧名のまま）を作ります。配布には使えません。配布は必ず上の Developer ID で行います。
+`scripts/build-app.sh` は、`SIGN_IDENTITY` を指定しないと、この Mac にある証明書から次の順に選んで署名します。
 
-開発用の署名には Hardened Runtime を付けません。チーム ID のない署名だと、Hardened Runtime が Sparkle.framework の読み込みを拒否するためです。配布用（Developer ID）には付けます（公証に必要です）。
+1. **Developer ID Application**（配布用と同じ証明書）: 署名の条件（designated requirement）が配布版と同じになるので、アクセシビリティの許可を配布版と共有できます。開発用ビルドを入れても、配布版の許可は外れません。複数のチームの Developer ID があるときは、使うものを `SIGN_IDENTITY` で指定してください。
+2. **Swiper Local Dev**（旧名のまま）: `scripts/setup-dev-signing.sh` で作る、自分の Mac 専用の自己署名証明書です。ビルドし直しても許可は外れませんが、配布版とは署名の条件が違います。開発用ビルドに許可を出すと配布版の許可が効かなくなり、逆も同じです。配布には使えません。
+3. **ad-hoc**: ビルドのたびに署名が変わるので、`--install` のたびに許可を消して、起動時に求め直します。
+
+配布は必ず上の Developer ID で行います（`release.sh` が `SIGN_IDENTITY` に渡します）。
+
+Hardened Runtime は、Developer ID で署名するときだけ付けます。配布用は公証のために、安全なタイムスタンプも付けます。開発用は、タイムスタンプ（Apple のサーバーへの問い合わせ）を省きます。自己署名と ad-hoc に付けないのは、チーム ID のない署名だと、Hardened Runtime が Sparkle.framework の読み込みを拒否するためです。

@@ -72,7 +72,7 @@ Choose Settings… (⌘,) from the menu bar icon. The settings window runs in it
 TRITAB_DEBUG=1 /Applications/TriTab.app/Contents/MacOS/TriTab  # launch with logging
 ```
 
-The Command Line Tools are enough; Xcode isn't required. With the development certificate, Accessibility access survives rebuilds. Release steps are in [docs/RELEASE.md](docs/RELEASE.md) (Japanese).
+The Command Line Tools are enough; Xcode isn't required. `build-app.sh` signs with your Developer ID Application certificate if you have one, and otherwise with the development certificate. Either way, Accessibility access survives rebuilds. macOS remembers only the signature you last allowed for each app, so if you switch between builds signed differently, such as the released TriTab and a build signed with the development certificate, remove TriTab from the Accessibility list in System Settings and allow it again. Release steps are in [docs/RELEASE.md](docs/RELEASE.md) (Japanese).
 
 ## How it works
 
