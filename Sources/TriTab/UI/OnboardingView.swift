@@ -358,8 +358,8 @@ private struct DonePage: View {
                 Toggle(isOn: $shelf) {
                     Label {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(L("ノッチの棚", "Notch Shelf"))
-                            Text(L("ファイルをノッチに一時置き", "Stash files in the notch")).font(.caption).foregroundStyle(.secondary)
+                            Text(L("ノッチのトレイ", "Notch Shelf"))
+                            Text(L("ファイルをノッチにいったん置ける", "Stash files in the notch")).font(.caption).foregroundStyle(.secondary)
                         }
                     } icon: { IconBadge(symbol: "tray.full.fill", color: Sunset.purple, size: 26, fill: Sunset.badge(3)) }
                 }

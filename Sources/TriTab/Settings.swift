@@ -23,12 +23,32 @@ enum Sensitivity: String, CaseIterable {
     }
 }
 
+/// 5本指で上へスワイプしたときにスリープさせるもの
+enum FiveFingerSwipeUp: String, CaseIterable {
+    case off, display, mac
+
+    var label: String {
+        switch self {
+        case .off: return L("しない", "Off")
+        case .display: return L("ディスプレイをスリープ", "Sleep Display")
+        case .mac: return L("Mac をスリープ", "Sleep Mac")
+        }
+    }
+}
+
 /// UserDefaults に保存する設定
 final class Settings {
     static let shared = Settings()
     private let d = UserDefaults.standard
 
     private init() {
+        // 0.1.1 までは、5本指の上スワイプはディスプレイのスリープだけで、オン / オフの設定だった。
+        // オンにしていた人は「ディスプレイをスリープ」にする（既定の値を登録する前に、保存された値だけを見る）
+        if d.object(forKey: "fiveFingerUp") == nil, d.object(forKey: "fiveFingerSleep") != nil {
+            d.set(d.bool(forKey: "fiveFingerSleep") ? FiveFingerSwipeUp.display.rawValue : FiveFingerSwipeUp.off.rawValue,
+                  forKey: "fiveFingerUp")
+            d.removeObject(forKey: "fiveFingerSleep")
+        }
         d.register(defaults: [
             "enabled": true,
             "fingers": 3,
@@ -46,7 +66,7 @@ final class Settings {
             "pinchReload": true,
             "swipeReverse": true,
             // タブ以外の機能は既定で OFF（配布時に「タブ操作アプリ」としてわかりやすくするため）
-            "fiveFingerSleep": false,
+            "fiveFingerUp": FiveFingerSwipeUp.off.rawValue,
             "dragSpaces": false,
             // 日本語入力を使っている人だけ、英数／かな切り替えを最初からオンにする
             "imeCmd": Self.usesJapaneseInput,
@@ -54,6 +74,7 @@ final class Settings {
             "shelf": false,
             "shelfAnimation": "jelly",
             "shelfDropMode": ShelfDropMode.reference.rawValue,
+            "shelfAutoRemove": 0, // 削除しない（トレイの中身は再起動しても残る、という動きを、選ばない限り変えない）
             "didOnboard": false,
         ])
     }
@@ -115,25 +136,39 @@ final class Settings {
     var swipeReverse: Bool { get { d.bool(forKey: "swipeReverse") } set { d.set(newValue, forKey: "swipeReverse") } }
     /// 親指＋2本指のピンチイン → 再読み込み
     var pinchReload: Bool { get { d.bool(forKey: "pinchReload") } set { d.set(newValue, forKey: "pinchReload") } }
-    /// 5 本指で上スワイプ → ディスプレイをスリープ
-    var fiveFingerSleep: Bool { get { d.bool(forKey: "fiveFingerSleep") } set { d.set(newValue, forKey: "fiveFingerSleep") } }
+    /// 5 本指で上スワイプ → ディスプレイだけ、または Mac をスリープ（既定: しない）
+    var fiveFingerSwipeUp: FiveFingerSwipeUp {
+        get { FiveFingerSwipeUp(rawValue: d.string(forKey: "fiveFingerUp") ?? "") ?? .off }
+        set { d.set(newValue.rawValue, forKey: "fiveFingerUp") }
+    }
     /// ドラッグ中に N 本指で左右へスワイプ → 隣のデスクトップへ（つかんでいるものも一緒に）
     var dragSpaces: Bool { get { d.bool(forKey: "dragSpaces") } set { d.set(newValue, forKey: "dragSpaces") } }
     /// ⌘ 単体で英数 / かな（左⌘=英数、右⌘=かな）
     var imeCmd: Bool { get { d.bool(forKey: "imeCmd") } set { d.set(newValue, forKey: "imeCmd") } }
     /// N+1 本指タップで英数 / かなを切り替え
     var imeTap: Bool { get { d.bool(forKey: "imeTap") } set { d.set(newValue, forKey: "imeTap") } }
-    /// ノッチの棚
+    /// ノッチのトレイ
     var shelf: Bool { get { d.bool(forKey: "shelf") } set { d.set(newValue, forKey: "shelf") } }
 
     var shelfAnimation: ShelfAnimationStyle {
         ShelfAnimationStyle(rawValue: d.string(forKey: "shelfAnimation") ?? "") ?? .jelly
     }
 
-    /// 棚に置くときの置き方（参照 / コピー）。棚の上の帯のスイッチでも切り替わる
+    /// トレイに置くときの置き方（参照 / コピー）。トレイの上の帯のスイッチでも切り替わる
     var shelfDropMode: ShelfDropMode {
         get { ShelfDropMode(rawValue: d.string(forKey: "shelfDropMode") ?? "") ?? .reference }
         set { d.set(newValue.rawValue, forKey: "shelfDropMode") }
+    }
+
+    /// トレイに置いてからこの日数がたった項目を、自動で削除する（0 なら削除しない）
+    var shelfAutoRemoveDays: Int {
+        get { max(d.integer(forKey: "shelfAutoRemove"), 0) }
+        set { d.set(newValue, forKey: "shelfAutoRemove") }
+    }
+
+    /// 自動で削除するまでの時間（削除しないなら nil）
+    var shelfAutoRemoveAfter: TimeInterval? {
+        shelfAutoRemoveDays > 0 ? TimeInterval(shelfAutoRemoveDays) * 24 * 60 * 60 : nil
     }
 
     /// 日本語を使っている人か（表示言語が日本語、または日本語の入力ソースが有効）

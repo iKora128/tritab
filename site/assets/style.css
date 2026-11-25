@@ -698,7 +698,7 @@ html:lang(ja) .g h3, html:lang(ja) #gestures .fine { word-break: keep-all; overf
   .extras { grid-template-columns: 1fr; }
 }
 
-/* ノッチの棚 */
+/* ノッチのトレイ */
 .shelf {
   position: absolute; top: 0; left: 50%; width: 88%; max-width: 460px; transform: translateX(-50%);
   padding: 9px 16px 16px; border-radius: 0 0 26px 26px;

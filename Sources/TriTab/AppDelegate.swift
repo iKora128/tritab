@@ -55,20 +55,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         input.decideClick = { [weak self] in self?.decideClick() ?? .passThrough }
         input.shouldSuppressScroll = { [weak self] in self?.touch.shouldSuppressScroll ?? false }
         input.onKeyDown = { [weak self] event in self?.shelf.handleKeyDown(event) ?? false }
-        shelf.onDropModeChange = { [weak self] mode in self?.settings.shelfDropMode = mode } // 棚のスイッチ → 設定
+        shelf.onDropModeChange = { [weak self] mode in self?.settings.shelfDropMode = mode } // トレイのスイッチ → 設定
         startInputTap()
 
         applySettings()
         NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil,
                                                queue: .main) { [weak self] _ in self?.applySettings() }
-        // 設定画面から「棚のアニメーションを試す」
+        // 設定画面から「トレイのアニメーションを試す」
         DistributedNotificationCenter.default().addObserver(forName: ShelfPreview.name, object: nil,
                                                             queue: .main) { [weak self] note in
             let style = (note.userInfo?["style"] as? String).flatMap(ShelfAnimationStyle.init(rawValue:))
             self?.shelf.preview(style)
         }
         if ProcessInfo.processInfo.environment["TRITAB_DEBUG"] != nil {
-            // 動作確認用（記録モードのときだけ）: 棚にファイルを入れる / 開く / Quick Look / 閉じる
+            // 動作確認用（記録モードのときだけ）: トレイにファイルを入れる / 開く / Quick Look / 閉じる
             DistributedNotificationCenter.default().addObserver(forName: Notification.Name("io.github.ikora128.TriTab.debugShelf"),
                                                                 object: nil, queue: .main) { [weak self] note in
                 guard let self, let cmd = note.userInfo?["cmd"] as? String else { return }
@@ -122,7 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let me = ProcessInfo.processInfo.processIdentifier
         let screenOpen = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
             .contains { $0.processIdentifier != me } // 設定画面・はじめての案内（別プロセス）
-        // 棚の中身は保存してあり、起動し直しても戻る。開いて操作している最中だけ待つ
+        // トレイの中身は保存してあり、起動し直しても戻る。開いて操作している最中だけ待つ
         let shelfInUse = shelf.draggingOut || [.peek, .open, .large].contains(shelf.state)
         return touch.currentFingerCount > 0       // トラックパッドに指が触れている
             || shelfInUse
@@ -167,8 +167,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         switch event {
         case let .swipe(direction, fingers) where fingers == n:
             perform(settings.mapping.action(for: direction))
-        case .swipe(.up, 5) where settings.fiveFingerSleep:
-            sleepDisplay()
+        case .swipe(.up, 5) where settings.fiveFingerSwipeUp != .off:
+            goToSleep(settings.fiveFingerSwipeUp)
         case .tap(let fingers) where fingers == n && settings.tapNewTab:
             perform(.newTab)
         case .tap(let fingers) where fingers == n + 1 && settings.imeTap:
@@ -276,11 +276,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if settings.showHUD { HUD.shared.show(text) }
     }
 
-    private func sleepDisplay() {
-        guard !dryRun else { hud(L("検出: ディスプレイをスリープ", "Detected: Sleep Display")); return }
+    /// 5本指の上スワイプ: ディスプレイだけ、または Mac をスリープさせる（Apple メニューの「スリープ」と同じ）
+    private func goToSleep(_ target: FiveFingerSwipeUp) {
+        guard target != .off else { return }
+        guard !dryRun else {
+            hud(target == .mac ? L("検出: Mac をスリープ", "Detected: Sleep Mac") : L("検出: ディスプレイをスリープ", "Detected: Sleep Display"))
+            return
+        }
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
-        p.arguments = ["displaysleepnow"]
+        p.arguments = [target == .mac ? "sleepnow" : "displaysleepnow"]
         try? p.run()
     }
 
@@ -359,6 +364,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         input.imeCommandEnabled = settings.imeCommandActive
         shelf.style = settings.shelfAnimation
         shelf.dropMode = settings.shelfDropMode
+        shelf.autoRemoveAfter = settings.shelfAutoRemoveAfter // トレイを有効にする前に（起動して読み込んだときに削除できるように）
         if settings.shelf != shelfEnabled {
             shelfEnabled = settings.shelf
             shelf.setEnabled(shelfEnabled)

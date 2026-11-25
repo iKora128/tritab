@@ -14,7 +14,7 @@ struct SettingsView: View {
             case .swipe: return L("スワイプ", "Swipe")
             case .tapClick: return L("タップとクリック", "Tap & Click")
             case .input: return L("日本語入力", "Japanese Input")
-            case .shelf: return L("ノッチの棚", "Notch Shelf")
+            case .shelf: return L("ノッチのトレイ", "Notch Shelf")
             case .apps: return L("対象アプリ", "Apps")
             case .general: return L("一般", "General")
             }
@@ -155,6 +155,7 @@ private struct SwipePane: View {
     @AppStorage("downAction") private var downAction: TabAction = .closeTab
     @AppStorage("sensitivity") private var sensitivity: Sensitivity = .low
     @AppStorage("swipeReverse") private var swipeReverse = true
+    @AppStorage("fiveFingerUp") private var fiveFingerUp: FiveFingerSwipeUp = .off
 
     var body: some View {
         Form {
@@ -179,6 +180,15 @@ private struct SwipePane: View {
                 GestureRow(kind: .swipe(.down, fingers: fingers), title: L("下へスワイプ", "Swipe down")) {
                     Picker("", selection: $downAction) {
                         ForEach([TabAction.closeTab, .none], id: \.self) { Text($0.label).tag($0) }
+                    }
+                    .labelsHidden().fixedSize()
+                }
+            }
+            Section(L("ほかのスワイプ", "Other Swipes")) {
+                GestureRow(kind: .swipe(.up, fingers: 5), title: L("5本指で上へスワイプ", "Swipe up with 5 fingers"),
+                           detail: L("席を外すときに、すぐスリープ", "Sleep right away when you step away")) {
+                    Picker("", selection: $fiveFingerUp) {
+                        ForEach(FiveFingerSwipeUp.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                     .labelsHidden().fixedSize()
                 }
@@ -221,7 +231,6 @@ private struct TapClickPane: View {
     @AppStorage("clickCmd") private var clickCmd = true
     @AppStorage("clickReopen") private var clickReopen = true
     @AppStorage("pinchReload") private var pinchReload = true
-    @AppStorage("fiveFingerSleep") private var fiveFingerSleep = false
 
     var body: some View {
         Form {
@@ -246,12 +255,6 @@ private struct TapClickPane: View {
                 GestureRow(kind: .pinch, title: L("親指＋2本指でつまむ", "Pinch with thumb and 2 fingers"),
                            detail: L("再読み込み", "Reload")) {
                     Toggle("", isOn: $pinchReload).labelsHidden()
-                }
-            }
-            Section(L("その他", "Other")) {
-                GestureRow(kind: .swipe(.up, fingers: 5), title: L("5本指で上へスワイプ", "Swipe up with 5 fingers"),
-                           detail: L("ディスプレイをスリープ", "Put display to sleep")) {
-                    Toggle("", isOn: $fiveFingerSleep).labelsHidden()
                 }
             }
         }
@@ -330,31 +333,45 @@ private struct KeyCap: View {
     }
 }
 
-// MARK: - ノッチの棚
+// MARK: - ノッチのトレイ
 
 private struct ShelfPane: View {
     @AppStorage("shelf") private var shelf = false
     @AppStorage("shelfAnimation") private var animation: ShelfAnimationStyle = .jelly
     @AppStorage("shelfDropMode") private var dropMode: ShelfDropMode = .reference
+    @AppStorage("shelfAutoRemove") private var autoRemoveDays = 0
 
     var body: some View {
         Form {
             Section {
-                PaneHeader(symbol: "tray.full.fill", color: Sunset.purple, fill: Sunset.badge(3), title: L("ノッチの棚", "Notch Shelf"),
-                           subtitle: L("ファイルや画像、テキストをノッチに一時置き。あとで好きな場所へ。",
+                PaneHeader(symbol: "tray.full.fill", color: Sunset.purple, fill: Sunset.badge(3), title: L("ノッチのトレイ", "Notch Shelf"),
+                           subtitle: L("ファイルや画像、テキストを、ノッチにいったん置いておけます。",
                                        "Stash files, images, and text in the notch. Drop them anywhere later."))
             }
             Section {
-                Toggle(L("ノッチの棚を使う", "Use the Notch Shelf"), isOn: $shelf)
+                Toggle(L("ノッチのトレイを使う", "Use the Notch Shelf"), isOn: $shelf)
             }
             Section {
                 Picker(L("置き方", "When You Drop Files"), selection: $dropMode) {
                     Text(L("参照で置く（元の場所のまま）", "Add a Reference (the file stays where it is)")).tag(ShelfDropMode.reference)
-                    Text(L("コピーして置く（棚に複製。元はそのまま）", "Add a Copy (the original stays untouched)")).tag(ShelfDropMode.copy)
+                    Text(L("コピーして置く（複製を作り、元のファイルはそのまま）", "Add a Copy (the original stays untouched)")).tag(ShelfDropMode.copy)
                 }
             } footer: {
-                Text(L("棚の上の帯のスイッチでも切り替えられます。ドラッグ中に ⌥ を押しながら離すとコピー、⌘⌥ なら参照になります。",
-                       "You can also switch this on the strip at the top of the shelf. While dragging, hold ⌥ to add a copy, or ⌘⌥ to add a reference."))
+                Text(L("開いているときにノッチの横に出るスイッチでも切り替えられます。ドラッグ中に ⌥ を押しながら離すとコピー、⌘⌥ なら参照になります。ブラウザの画像やリンク、テキストは、どちらを選んでいても TriTab の中に保存します。",
+                       "You can also change this with the switch next to the notch while the shelf is open. While dragging, hold ⌥ to add a copy, or ⌘⌥ to add a reference. Images, links, and text from a browser are always saved on the shelf."))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section {
+                Picker(L("古い項目を自動で削除", "Remove Old Items"), selection: $autoRemoveDays) {
+                    Text(L("しない", "Never")).tag(0)
+                    Text(L("置いてから 1 日たったら", "After 1 Day")).tag(1)
+                    Text(L("置いてから 3 日たったら", "After 3 Days")).tag(3)
+                    Text(L("置いてから 1 週間たったら", "After 1 Week")).tag(7)
+                    Text(L("置いてから 1 か月たったら", "After 1 Month")).tag(30)
+                }
+            } footer: {
+                Text(L("置いてからこの期間がたった項目を、古いものから順に削除します。コピーとメモはゴミ箱に入れるので、あとから戻せます。参照で置いたものはトレイから消えるだけで、元のファイルは削除しません。項目にマウスを乗せると、削除されるころがわかります。",
+                       "Items leave the shelf, oldest first, once they’ve been there this long. Copies and notes go to the Trash, so you can get them back. For references, only the shelf item goes away; the original file is never touched. Hover over an item to see when it will be removed."))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section {
@@ -378,18 +395,18 @@ private struct ShelfPane: View {
             } header: {
                 Text(L("アニメーション", "Animation"))
             } footer: {
-                Text(L("ボタンを押すと、画面上部のノッチで棚が実際に動きます。",
+                Text(L("ボタンを押すと、画面上部のノッチで実際に開いたり閉じたりします。",
                        "Press a button to watch the shelf move in the notch at the top of your screen."))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section(L("使い方", "How to Use")) {
-                Step(number: 1, text: L("ファイルをドラッグして少し上へ動かすと、ノッチから棚が顔を出す",
-                                        "Drag a file and nudge it upward. The shelf peeks out of the notch."))
-                Step(number: 2, text: L("そのまま棚に落とす。参照かコピーかは、棚の上の帯のスイッチで選んだ置き方になる。一度に複数を落とすと、1 つのまとめになる",
-                                        "Drop it on the shelf. The switch on the strip at the top of the shelf decides whether it’s added as a reference or a copy. Several files dropped at once become one stack."))
-                Step(number: 3, text: L("ノッチにマウスを乗せても棚が開く。開いているあいだは ⌘V でクリップボードの中身を置ける",
+                Step(number: 1, text: L("ファイルやブラウザの画像をドラッグして少し上へ動かすと、ノッチの下にトレイが開き始め、画面の上端に近づけると大きく開く。リンクやテキストは、ノッチまで持っていくと開く",
+                                        "Drag a file or an image from your browser and nudge it upward. The shelf peeks out of the notch and opens wide as you get close. For links and text, bring them to the notch to open the shelf."))
+                Step(number: 2, text: L("そのまま落とす。ファイルは、ノッチの横のスイッチで選んだ置き方（参照かコピー）で置かれる。画像とリンクはファイルにして保存し、テキストはメモになる。一度に複数のファイルを落とすと、ひとまとめになる",
+                                        "Drop it on the shelf. Files are added the way the switch next to the notch says (reference or copy). Images and links are saved on the shelf, and text becomes a note. Several files dropped at once become one stack."))
+                Step(number: 3, text: L("ノッチにマウスを乗せても開く。開いているあいだは ⌘V でクリップボードの中身を置ける",
                                         "Hovering over the notch also opens the shelf. While it’s open, press ⌘V to add what’s on the clipboard."))
-                Step(number: 4, text: L("棚のファイルを好きな場所へドラッグすると、そこへ移動して棚から消える。参照なら元のファイル、コピーなら棚の複製が移動する。⌥を押しながらなら複製を置き、棚にも残る",
+                Step(number: 4, text: L("置いたファイルを好きな場所へドラッグすると、そこへ移動してトレイから消える。参照なら元のファイルが、コピーなら複製のほうが移動する。⌥を押しながらなら行き先に複製を置き、トレイにも残る",
                                         "Drag items from the shelf to wherever you like. They move there and leave the shelf: a reference moves the original, a copy moves the shelf’s duplicate. Hold ⌥ to drop a duplicate and keep the item."))
                 Step(number: 5, text: L("⌘クリックや⇧クリック、⌘A でまとめて選べる。右クリックすると「Finder で表示」などのメニューが出る",
                                         "⌘-click, ⇧-click, or ⌘A selects several items. Right-click for Show in Finder and more."))
@@ -399,7 +416,7 @@ private struct ShelfPane: View {
     }
 }
 
-/// 設定画面 → 常駐側へ「棚のアニメーションを見せて」
+/// 設定画面 → 常駐側へ「トレイのアニメーションを見せて」
 enum ShelfPreview {
     static let name = Notification.Name("io.github.ikora128.TriTab.previewShelf")
 
@@ -505,6 +522,9 @@ private struct GeneralPane: View {
             }
             Section {
                 Button(L("はじめの案内をもう一度見る…", "Show Welcome Guide Again…")) { SettingsProcess.open(.onboarding) }
+                LabeledContent(L("バージョン", "Version")) {
+                    Text(Self.version).foregroundStyle(.secondary).textSelection(.enabled)
+                }
             }
         }
         .formStyle(.grouped)
@@ -516,6 +536,19 @@ private struct GeneralPane: View {
         trusted = KeySender.isTrusted
         conflicts = SystemGestureChecker.conflicts(fingers: fingers)
         loginItem = SMAppService.mainApp.status == .enabled
+    }
+
+    /// 版とビルドの日時（ビルド番号は yyyyMMddHHmm。同じ版のまま作り直したものを見分けられるように、日時で出す）
+    private static var version: String {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let short = info["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info["CFBundleVersion"] as? String ?? ""
+        let parser = DateFormatter()
+        parser.dateFormat = "yyyyMMddHHmm"
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        guard let date = parser.date(from: build) else { return build.isEmpty ? short : "\(short) (\(build))" }
+        let shown = date.formatted(date: .numeric, time: .shortened)
+        return L("\(short)（\(shown) のビルド）", "\(short) (built \(shown))")
     }
 
     private func setLoginItem(_ on: Bool) {

@@ -7,6 +7,10 @@ import Carbon.HIToolbox
 /// - N+1 本指で押し込みクリック → クリックを捨てて「閉じたタブを復元」
 /// - ⌘ を単体で押して離す → 左⌘ は英数、右⌘ はかな（Karabiner の定番ルールと同じ）
 /// - ドラッグ中かどうかを覚える（ドラッグ中のスワイプは、タブではなく隣のデスクトップへの移動にする）
+///
+/// タップは 2 つに分ける。押す・離す・キーなどはメインスレッドで受け、ドラッグ中の動き（leftMouseDragged）だけは
+/// 専用のスレッドで受ける。タップを通る入力は、TriTab が返すまで先へ進まない。動きは途切れずに来るので、
+/// メインスレッドで受けると、トレイを開くなどで TriTab が少し忙しいあいだ、どのアプリのドラッグも引っかかってしまう
 final class InputTap {
     static let shared = InputTap()
 
@@ -21,7 +25,7 @@ final class InputTap {
     var decideClick: (() -> ClickDecision)?
     /// true を返している間はスクロールを捨てる（3 本指ジェスチャー中のページ送り誤爆を防ぐ）
     var shouldSuppressScroll: (() -> Bool)?
-    /// キーが押されたとき。true を返すとそのキーを捨てる（棚の ⌘V など）
+    /// キーが押されたとき。true を返すとそのキーを捨てる（トレイの ⌘V など）
     var onKeyDown: ((CGEvent) -> Bool)?
     /// ⌘ 単体での英数 / かなを有効にするか
     var imeCommandEnabled = false
@@ -29,19 +33,26 @@ final class InputTap {
     private(set) var isRunning = false
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
+    /// ドラッグ中の動きだけを受けるタップ（専用のスレッドで動かす）
+    private var dragTap: CFMachPort?
 
-    private var clickMode: ClickMode = .none
     private enum ClickMode { case none, addingCommand, swallowing }
 
     private var pendingCommand: (keyCode: Int64, time: TimeInterval)?
 
-    /// 左ボタンを押したまま動かした（leftMouseDragged が来た）。離すまで true
+    /// 押したときに決めたクリックの扱い（clickMode）と、左ボタンを押したまま動かしたか（dragged。離すまで true）。
+    /// 押す・離すはメインスレッドのタップが、動かすはドラッグ用のスレッドのタップが触るので、ロックで守る
+    private let stateLock = NSLock()
+    private var clickMode: ClickMode = .none
     private var dragged = false
 
     /// ウィンドウやファイルをドラッグしている最中か（左ボタンを押したまま、マウスを動かした）。
     /// 離したイベントを取りこぼしても残り続けないよう、いまボタンが押されているかも確かめる
     var isDragging: Bool {
-        if dragged, NSEvent.pressedMouseButtons & 1 == 0 { dragged = false }
+        let pressed = NSEvent.pressedMouseButtons & 1 != 0
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        if dragged, !pressed { dragged = false }
         return dragged
     }
 
@@ -51,21 +62,39 @@ final class InputTap {
     @discardableResult
     func start() -> Bool {
         guard tap == nil else { return true }
-        let types: [CGEventType] = [.leftMouseDown, .leftMouseUp, .leftMouseDragged,
-                                    .rightMouseDown, .otherMouseDown, .keyDown, .flagsChanged, .scrollWheel]
-        let mask = types.reduce(CGEventMask(0)) { $0 | (1 << CGEventMask($1.rawValue)) }
-        guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap,
-                                          options: .defaultTap, eventsOfInterest: mask,
-                                          callback: tapCallback, userInfo: nil)
+        guard let tap = Self.makeTap([.leftMouseDown, .leftMouseUp, .rightMouseDown, .otherMouseDown,
+                                      .keyDown, .flagsChanged, .scrollWheel], callback: tapCallback)
         else { return false }
+        guard let dragTap = Self.makeTap([.leftMouseDragged], callback: dragTapCallback) else {
+            CFMachPortInvalidate(tap)
+            return false
+        }
         self.tap = tap
+        self.dragTap = dragTap
         source = CFMachPortCreateRunLoopSource(nil, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
+        // ドラッグ中の動きは、専用のスレッドで受けてすぐ返す（TriTab のメインスレッドが忙しくても待たせない）
+        let thread = Thread {
+            let source = CFMachPortCreateRunLoopSource(nil, dragTap, 0)
+            CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
+            CGEvent.tapEnable(tap: dragTap, enable: true)
+            CFRunLoopRun()
+        }
+        thread.name = "TriTab drag tap"
+        thread.qualityOfService = .userInteractive
+        thread.start()
         isRunning = true
         return true
     }
 
+    private static func makeTap(_ types: [CGEventType], callback: CGEventTapCallBack) -> CFMachPort? {
+        let mask = types.reduce(CGEventMask(0)) { $0 | (1 << CGEventMask($1.rawValue)) }
+        return CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
+                                 eventsOfInterest: mask, callback: callback, userInfo: nil)
+    }
+
+    /// メインスレッドのタップ（押す・離す・キー・スクロールなど）
     fileprivate func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
@@ -74,32 +103,43 @@ final class InputTap {
 
         case .leftMouseDown:
             pendingCommand = nil
+            let decision = decideClick?() ?? .passThrough
+            let mode: ClickMode
+            switch decision {
+            case .passThrough: mode = .none
+            case .addCommand: mode = .addingCommand
+            case .replace: mode = .swallowing
+            }
+            stateLock.lock()
+            clickMode = mode
             dragged = false
-            switch decideClick?() ?? .passThrough {
+            stateLock.unlock()
+            switch decision {
             case .passThrough:
-                clickMode = .none
+                break
             case .addCommand:
-                clickMode = .addingCommand
                 event.flags.insert(.maskCommand)
             case let .replace(action):
-                clickMode = .swallowing
                 DispatchQueue.main.async(execute: action)
                 return nil
             }
             return Unmanaged.passUnretained(event)
 
-        case .leftMouseDragged, .leftMouseUp:
-            switch clickMode {
+        case .leftMouseUp:
+            // 離したら、クリックの扱いもドラッグ中の印も終わり
+            stateLock.lock()
+            let mode = clickMode
+            clickMode = .none
+            dragged = false
+            stateLock.unlock()
+            switch mode {
             case .none:
                 break
             case .addingCommand:
                 event.flags.insert(.maskCommand)
             case .swallowing:
-                if type == .leftMouseUp { clickMode = .none }
                 return nil
             }
-            dragged = type == .leftMouseDragged
-            if type == .leftMouseUp { clickMode = .none }
             return Unmanaged.passUnretained(event)
 
         case .keyDown:
@@ -133,6 +173,34 @@ final class InputTap {
         }
     }
 
+    /// ドラッグ用のスレッドのタップ（左ボタンを押したまま動かした）。押したときに決めた扱いに合わせて、
+    /// ⌘ を足す・捨てる・そのまま通す。メインスレッドの状態には触らない
+    fileprivate func handleDragged(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        switch type {
+        case .tapDisabledByTimeout, .tapDisabledByUserInput:
+            if let dragTap { CGEvent.tapEnable(tap: dragTap, enable: true) }
+            return Unmanaged.passUnretained(event)
+
+        case .leftMouseDragged:
+            stateLock.lock()
+            let mode = clickMode
+            if mode != .swallowing { dragged = true }
+            stateLock.unlock()
+            switch mode {
+            case .none:
+                break
+            case .addingCommand:
+                event.flags.insert(.maskCommand)
+            case .swallowing:
+                return nil
+            }
+            return Unmanaged.passUnretained(event)
+
+        default:
+            return Unmanaged.passUnretained(event)
+        }
+    }
+
     private func handleFlagsChanged(_ event: CGEvent) {
         guard imeCommandEnabled else { pendingCommand = nil; return }
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
@@ -158,6 +226,11 @@ final class InputTap {
 private func tapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent,
                          userInfo: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
     InputTap.shared.handle(type: type, event: event)
+}
+
+private func dragTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent,
+                             userInfo: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
+    InputTap.shared.handleDragged(type: type, event: event)
 }
 
 /// 英数 / かなキーを送って入力ソースを切り替える

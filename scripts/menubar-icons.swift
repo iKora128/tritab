@@ -53,7 +53,7 @@ let glyphs: [(String, String, Glyph)] = [
             dot(NSPoint(x: b.midX - 1.5 + dx, y: b.minY + 6 + (i == 1 ? 0.8 : 0)), 1.9)
         }
     }),
-    ("M2", "ノッチ + 棚の中身（くり抜き）", { b in
+    ("M2", "ノッチ + トレイの中身（くり抜き）", { b in
         let n = notch(b, width: 15, height: 8.5, radius: 3)
         NSColor.black.setFill()
         n.fill()

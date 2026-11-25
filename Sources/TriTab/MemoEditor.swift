@@ -1,11 +1,11 @@
 import AppKit
 
-/// 棚のメモを編集する小さなエディタ（棚のすぐ下に出る）。
+/// トレイのメモを編集する小さなエディタ（トレイのすぐ下に出る）。
 /// 文字を打つたびに少し待ってから自動保存する。外をクリックするか ⌘W / esc で閉じる。
 final class MemoEditor: NSObject, NSTextViewDelegate, NSWindowDelegate {
     static let shared = MemoEditor()
 
-    /// 閉じたとき（棚を落ち着かせるため）
+    /// 閉じたとき（トレイを落ち着かせるため）
     var onClose: (() -> Void)?
     private(set) var isOpen = false
 

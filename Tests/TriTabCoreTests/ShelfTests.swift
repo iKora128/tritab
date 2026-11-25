@@ -76,6 +76,85 @@ import Testing
         s.click("c", in: ["a", "c"], shift: true)
         #expect(s.ids == ["c"])
     }
+
+    // 1 段に 3 つ並ぶとき: [a b c] / [d e]。
+    // #expect の中では mutating のメソッドを呼べないので、押す操作は press にまとめる
+
+    @Test func arrowKeysMoveTheSelectionToTheNeighbor() {
+        var s = ShelfSelection<String>()
+        func press(_ d: ShelfSelection<String>.Direction) -> Bool { s.move(d, in: order, columns: 3) }
+        s.click("b", in: order)
+        #expect(press(.right))
+        #expect(s.ids == ["c"])
+        #expect(press(.left))
+        #expect(press(.left))
+        #expect(s.ids == ["a"])
+        #expect(!press(.left)) // 端ではそれ以上動かない
+        #expect(s.ids == ["a"])
+    }
+
+    @Test func upAndDownMoveByARow() {
+        var s = ShelfSelection<String>()
+        func press(_ d: ShelfSelection<String>.Direction) -> Bool { s.move(d, in: order, columns: 3) }
+        s.select("b")
+        #expect(press(.down))
+        #expect(s.ids == ["e"])
+        #expect(press(.up))
+        #expect(s.ids == ["b"])
+        #expect(!press(.up)) // 上の段はない
+        s.select("c")
+        #expect(press(.down)) // 真下に項目がなければ、最後の項目へ（Finder と同じ）
+        #expect(s.ids == ["e"])
+        #expect(!press(.down))
+    }
+
+    @Test func arrowWithNothingSelectedStartsFromTheHoveredItemOrTheEnd() {
+        var s = ShelfSelection<String>()
+        func press(_ d: ShelfSelection<String>.Direction, start: String? = nil) -> Bool {
+            s.move(d, in: order, columns: 3, start: start)
+        }
+        #expect(press(.right))
+        #expect(s.ids == ["a"])
+        s.clear()
+        #expect(press(.left))
+        #expect(s.ids == ["e"])
+        s.clear()
+        #expect(press(.down, start: "c")) // マウスが乗っている項目から
+        #expect(s.ids == ["c"])
+        var empty = ShelfSelection<String>()
+        func pressOnEmpty() -> Bool { empty.move(.right, in: [], columns: 3) }
+        #expect(!pressOnEmpty())
+    }
+
+    @Test func shiftArrowExtendsFromTheAnchor() {
+        var s = ShelfSelection<String>()
+        func press(_ d: ShelfSelection<String>.Direction, extend: Bool = false) -> Bool {
+            s.move(d, in: order, columns: 3, extend: extend)
+        }
+        s.select("b")
+        #expect(press(.right, extend: true))
+        #expect(s.ids == ["b", "c"])
+        #expect(press(.down, extend: true))
+        #expect(s.ids == ["b", "c", "d", "e"])
+        #expect(press(.up, extend: true)) // 起点（b）まで戻ると、b だけになる
+        #expect(s.ids == ["b"])
+        #expect(press(.left, extend: true)) // 起点の反対側へも広げられる
+        #expect(s.ids == ["a", "b"])
+        #expect(press(.right)) // ⇧なしなら、今の位置（a）の隣だけを選ぶ
+        #expect(s.ids == ["b"])
+    }
+
+    @Test func arrowContinuesFromTheLastClickedItem() {
+        var s = ShelfSelection<String>()
+        func press(_ d: ShelfSelection<String>.Direction) -> Bool { s.move(d, in: order, columns: 3) }
+        s.click("a", in: order)
+        s.click("d", in: order, command: true)
+        #expect(press(.right))
+        #expect(s.ids == ["e"])
+        s.selectAll(order)
+        #expect(press(.left))
+        #expect(s.ids == ["d"])
+    }
 }
 
 // MARK: - まとめ
@@ -125,6 +204,28 @@ import Testing
         #expect(a.removingFiles([a.id]) == nil)
         #expect(a.removingFiles([b.id]) == a)
     }
+
+    @Test func groupIsAsNewAsItsNewestFile() {
+        let old = ShelfItem(kind: .copy, url: URL(fileURLWithPath: "/tmp/a"), addedAt: Date(timeIntervalSince1970: 100))
+        let new = ShelfItem(kind: .copy, url: URL(fileURLWithPath: "/tmp/b"), addedAt: Date(timeIntervalSince1970: 200))
+        let group = ShelfItem.group([old, new])
+        #expect(group.addedAt == Date(timeIntervalSince1970: 200))
+        // 新しいほうが出ていったら、残ったファイルの日時になる
+        #expect(group.removingFiles([new.id])?.addedAt == Date(timeIntervalSince1970: 100))
+    }
+
+    @Test func receivedFileReplacesItsPlaceholder() {
+        // ブラウザから届くファイルは、名前が届くまでわからない
+        var group = ShelfItem.group([file("受け取り中", .copy, .copying), file("受け取り中", .copy, .copying)])
+        let first = group.members[0].id
+        group.updateFile(first) { $0.url = URL(fileURLWithPath: "/tmp/photo.jpg") }
+        group.setStatus(.ready, ofFile: first)
+        #expect(group.url.lastPathComponent == "photo.jpg") // 見た目と名前は先頭のファイル
+        #expect(group.status == .copying) // もう 1 つはまだ
+        var single = file("受け取り中", .copy, .copying)
+        single.updateFile(single.id) { $0.url = URL(fileURLWithPath: "/tmp/cat.gif") }
+        #expect(single.url.lastPathComponent == "cat.gif")
+    }
 }
 
 // MARK: - ドラッグの決まり
@@ -153,7 +254,7 @@ import Testing
 
     @Test func dragOutOperationsDependOnTheKind() {
         #expect(ShelfRules.dragOutOperations(for: .reference) == [.copy, .link, .generic, .move])
-        #expect(ShelfRules.dragOutOperations(for: .copy) == [.copy, .generic, .move]) // 棚の中の複製へのエイリアスは作らせない
+        #expect(ShelfRules.dragOutOperations(for: .copy) == [.copy, .generic, .move]) // トレイの中の複製へのエイリアスは作らせない
         #expect(ShelfRules.dragOutOperations(for: .memo) == .copy)
         // まとめてドラッグするときは、全部に共通する操作だけ
         #expect(ShelfRules.dragOutOperations(for: [.reference, .copy]) == [.copy, .generic, .move])
@@ -170,6 +271,85 @@ import Testing
         #expect(ShelfRules.staysOnShelf(.copy, after: []))
         // メモはいつも残る
         #expect(ShelfRules.staysOnShelf(.memo, after: .move))
+    }
+
+    @Test func dropsAreReadInTheOrderThatKeepsTheMost() {
+        func content(files: Bool = false, promises: Bool = false, image: Bool = false, link: Bool = false, text: Bool = false) -> ShelfDropContent? {
+            ShelfRules.dropContent(fileURLs: files, promisedFiles: promises, image: image, link: link, text: text)
+        }
+        // Finder のファイルは、パスの文字なども一緒に持っている
+        #expect(content(files: true, image: true, link: true, text: true) == .files)
+        // ブラウザの画像は、画像の URL や画像のデータも持っている。元のファイルの形のまま受け取る
+        #expect(content(promises: true, image: true, link: true, text: true) == .promisedFiles)
+        #expect(content(image: true, link: true, text: true) == .image)
+        // リンクは、URL の文字も持っている
+        #expect(content(link: true, text: true) == .link)
+        #expect(content(text: true) == .text)
+        #expect(content() == nil)
+    }
+
+    @Test func linksAndTextWaitForTheNotch() {
+        #expect(ShelfDropContent.files.opensOnApproach)
+        #expect(ShelfDropContent.promisedFiles.opensOnApproach)
+        #expect(ShelfDropContent.image.opensOnApproach)
+        // タブやテキストのドラッグは画面の上のほうでもよくするので、上へ動かしただけでは開かない
+        #expect(!ShelfDropContent.link.opensOnApproach)
+        #expect(!ShelfDropContent.text.opensOnApproach)
+    }
+
+    @Test func shelfPeeksWhenRisingAndOpensNearTheTop() {
+        let area = ShelfReceiveArea(depth: 320, halfWidth: 500)
+        // 下のほうで上へ動かすと、顔を出す
+        #expect(ShelfRules.approach(fromTop: 600, fromCenter: 0, risen: 30, area: area) == .peek)
+        #expect(ShelfRules.approach(fromTop: 600, fromCenter: 0, risen: 10, area: area) == .none)
+        // 上端の真ん中のまわりに来たら、広げる
+        #expect(ShelfRules.approach(fromTop: 300, fromCenter: 450, risen: 30, area: area) == .open)
+        // 横長の画面の端のほうなら、上端まで来ても広げない
+        #expect(ShelfRules.approach(fromTop: 100, fromCenter: 900, risen: 300, area: area) == .peek)
+        // 上のほうでドラッグを始めただけ（Finder の中で動かしているなど）では開かない
+        #expect(ShelfRules.approach(fromTop: 150, fromCenter: 0, risen: 0, area: area) == .none)
+        // ノッチのすぐ近くなら、上へ動かしていなくても開く
+        #expect(ShelfRules.approach(fromTop: 40, fromCenter: 100, risen: 0, area: area) == .open)
+    }
+
+    @Test func shelfOpensByPositionOnly() {
+        let area = ShelfReceiveArea(depth: 320, halfWidth: 500)
+        // 範囲の手前では、どれだけ上へ動かしても広げない（速さでは決めない）
+        #expect(ShelfRules.approach(fromTop: 330, fromCenter: 0, risen: 800, area: area) == .peek)
+        #expect(ShelfRules.approach(fromTop: 310, fromCenter: 0, risen: 800, area: area) == .open)
+    }
+
+    @Test func openedShelfRetractsOnlyWhenFarFromTheArea() {
+        let area = ShelfReceiveArea(depth: 320, halfWidth: 500)
+        // 範囲から 150 より離れたら引っ込める（下へも、横へも）
+        #expect(ShelfRules.shouldRetract(fromTop: 480, fromCenter: 0, area: area))
+        #expect(ShelfRules.shouldRetract(fromTop: 100, fromCenter: 660, area: area))
+        // 範囲を少し出たくらいなら、止まっていても引っ込めない（トラックパッドで指を置き直しても開いたり閉じたりしない）
+        #expect(!ShelfRules.shouldRetract(fromTop: 460, fromCenter: 0, area: area))
+        #expect(!ShelfRules.shouldRetract(fromTop: 100, fromCenter: 640, area: area))
+        #expect(!ShelfRules.shouldRetract(fromTop: 200, fromCenter: 0, area: area))
+    }
+
+    @Test func expiredItemsAreTheOldOnesOldestFirst() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let day: TimeInterval = 24 * 60 * 60
+        func item(daysAgo: Double, _ status: ShelfItem.Status = .ready) -> ShelfItem {
+            ShelfItem(kind: .copy, url: URL(fileURLWithPath: "/tmp/x"), status: status, addedAt: now.addingTimeInterval(-daysAgo * day))
+        }
+        let fresh = item(daysAgo: 1), old = item(daysAgo: 8), older = item(daysAgo: 30), copying = item(daysAgo: 9, .copying)
+        #expect(ShelfRules.expired([fresh, old, copying, older], olderThan: 7 * day, now: now) == [older.id, old.id])
+        // ちょうどその期間がたったものも削除する
+        #expect(ShelfRules.expired([item(daysAgo: 7)], olderThan: 7 * day, now: now).count == 1)
+    }
+
+    @Test func temporaryFilesAreRecognized() {
+        let home = URL(fileURLWithPath: "/Users/someone")
+        #expect(ShelfRules.isTemporary(URL(fileURLWithPath: "/private/var/folders/ab/cd/T/screenshot.png"), home: home))
+        #expect(ShelfRules.isTemporary(URL(fileURLWithPath: "/var/folders/ab/cd/T/screenshot.png"), home: home))
+        #expect(ShelfRules.isTemporary(URL(fileURLWithPath: "/tmp/drag/file.txt"), home: home))
+        #expect(ShelfRules.isTemporary(URL(fileURLWithPath: "/Users/someone/Library/Caches/com.example/drag.pdf"), home: home))
+        #expect(!ShelfRules.isTemporary(URL(fileURLWithPath: "/Users/someone/Desktop/report.pdf"), home: home))
+        #expect(!ShelfRules.isTemporary(URL(fileURLWithPath: "/Users/someone/Library/CachesBackup/a.txt"), home: home))
     }
 }
 
@@ -239,6 +419,37 @@ private final class Sandbox {
         #expect(box.library.refresh(&item))
         #expect(item.status == .missing)
         #expect(!item.isAvailable)
+    }
+
+    @Test func quickRefreshOnlyChecksThatTheFileIsStillThere() throws {
+        let box = Sandbox()
+        let original = box.file("a.txt")
+        // ブックマークがなくても、いまの場所にあれば使える（つかんだ瞬間にブックマークを解決しない）
+        var reference = ShelfItem(kind: .reference, url: original)
+        #expect(!box.library.quickRefresh(&reference))
+        #expect(reference.isAvailable)
+        // コピーが消えていれば、見つからない
+        var copy = try box.readyCopy(of: box.file("b.txt"))
+        try FileManager.default.removeItem(at: copy.url)
+        #expect(box.library.quickRefresh(&copy))
+        #expect(copy.status == .missing)
+        // 作っている途中のコピーには触らない
+        var planned = box.library.plannedCopy(of: original)
+        #expect(!box.library.quickRefresh(&planned))
+        #expect(planned.status == .copying)
+    }
+
+    @Test func quickRefreshFollowsAReferenceThatMoved() throws {
+        let box = Sandbox()
+        let original = box.file("report.pdf")
+        var item = box.library.reference(to: original)
+        let moved = box.root.appendingPathComponent("Desktop/report.pdf")
+        try FileManager.default.createDirectory(at: moved.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.moveItem(at: original, to: moved)
+        // いまの場所に見つからないときだけ、ブックマークで追い直す
+        #expect(box.library.quickRefresh(&item))
+        #expect(item.status == .ready)
+        #expect(path(item.url) == path(moved))
     }
 
     @Test func referenceInTheTrashIsMarked() throws {
@@ -373,6 +584,48 @@ private final class Sandbox {
         #expect(FileManager.default.fileExists(atPath: original.path))
         #expect(box.trashed.map(path) == [path(copy.url)])
         #expect(!FileManager.default.fileExists(atPath: copy.url.deletingLastPathComponent().path))
+    }
+
+    @Test func linkIsSavedAsAWeblocNamedAfterItsTitle() throws {
+        let box = Sandbox()
+        let url = try #require(URL(string: "https://example.com/articles/42?ref=top"))
+        let item = try #require(box.library.storeLink(url, title: "Swift: 入門 / 第1回\n"))
+        #expect(item.kind == .copy)
+        #expect(item.url.lastPathComponent == "Swift- 入門 - 第1回.webloc") // ファイル名に使えない文字は置き換える
+        #expect(ShelfLibrary.linkTarget(of: item.url) == url)
+        // 題名がなければサイトの名前
+        let untitled = try #require(box.library.storeLink(url, title: nil))
+        #expect(untitled.url.lastPathComponent == "example.com.webloc")
+        #expect(try #require(box.library.storeLink(url, title: "   ")).url.lastPathComponent == "example.com.webloc")
+        // ほかのファイルはリンクとして読まない
+        #expect(ShelfLibrary.linkTarget(of: box.file("a.txt")) == nil)
+    }
+
+    @Test func addedDateComesBackAfterRestart() throws {
+        let box = Sandbox()
+        let added = Date(timeIntervalSince1970: 1_700_000_000)
+        var copy = try box.readyCopy(of: box.file("a.txt"))
+        copy.addedAt = added
+        let group = ShelfItem.group([box.library.reference(to: box.file("b.txt")), box.library.reference(to: box.file("c.txt"))])
+        box.library.save([copy, group])
+
+        let loaded = box.library.load(now: Date(timeIntervalSince1970: 1_800_000_000))
+        #expect(loaded[0].addedAt == added)
+        #expect(loaded[1].addedAt == group.addedAt)
+    }
+
+    @Test func itemsFromEarlierVersionsAreDatedWhenFirstLoaded() throws {
+        let box = Sandbox()
+        // 0.1.1 までの一覧（置いた日時がない）
+        let file = box.file("a.txt")
+        let record = #"[{"id":"\#(UUID().uuidString)","kind":"reference","path":"\#(file.path)"}]"#
+        try FileManager.default.createDirectory(at: box.library.directory, withIntermediateDirectories: true)
+        try Data(record.utf8).write(to: box.library.directory.appendingPathComponent("shelf.json"))
+
+        let firstLoad = Date(timeIntervalSince1970: 1_800_000_000)
+        #expect(box.library.load(now: firstLoad).map(\.addedAt) == [firstLoad])
+        // 読み込んだ時点を置いた日時として保存してあるので、次に読み込んでも変わらない（いつまでも新しいままにならない）
+        #expect(box.library.load(now: firstLoad.addingTimeInterval(3600)).map(\.addedAt) == [firstLoad])
     }
 
     @Test func movedCopyLeavesNoEmptyFolder() throws {

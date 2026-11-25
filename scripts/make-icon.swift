@@ -132,10 +132,10 @@ var variants: [String: () -> Void] = [
             g.draw(in: dot, angle: -45)
         }
     },
-    // D: ノッチと棚 + 3 本指（全機能のまとめ）
+    // D: ノッチとトレイ + 3 本指（全機能のまとめ）
     "d-notch": {
         drawTile([color(0x0EA5E9), color(0x6366F1)])
-        // 上のノッチから垂れる黒い棚
+        // 上のノッチから垂れる黒いパネル（トレイ）
         let notch = NSBezierPath()
         let x0: CGFloat = 330, x1: CGFloat = 694, top: CGFloat = 924, bottom: CGFloat = 760, r: CGFloat = 46, f: CGFloat = 26
         notch.move(to: NSPoint(x: x0 - f, y: top))
@@ -159,7 +159,7 @@ var variants: [String: () -> Void] = [
 
 // MARK: - 案 4 を作り込んだもの（ノッチ + 3 本指）
 
-/// 棚と同じ形のノッチ: 上の角は外へ広がり（フレア）、下は丸い
+/// トレイと同じ形のノッチ: 上の角は外へ広がり（フレア）、下は丸い
 func notchPath(width w: CGFloat, height h: CGFloat, radius r: CGFloat, flare f: CGFloat) -> NSBezierPath {
     let top = tile.maxY, bottom = top - h
     let x0 = tile.midX - w / 2, x1 = tile.midX + w / 2
@@ -260,7 +260,7 @@ func drawNotch(width: CGFloat = 400, height: CGFloat = 176, items: Bool = false)
             .draw(in: NSRect(x: tile.midX - width / 2, y: tile.maxY - height, width: width, height: 40), angle: -90)
         NSGraphicsContext.restoreGraphicsState()
         if items {
-            // 棚の中身（3 つの小さなタイル）
+            // トレイの中身（3 つの小さなタイル）
             let w: CGFloat = 62, gap: CGFloat = 22
             let y = tile.maxY - height + 34
             for i in -1...1 {
@@ -297,7 +297,7 @@ var refined: [String: () -> Void] = [
         fingertips(centerY: 400, color: color(0xE0F2FE), glow: color(0x67E8F9))
         glassRim()
     },
-    // E3: ノッチの棚に中身が入っている（タブ + 棚の両方を表す）
+    // E3: ノッチのトレイに中身が入っている（タブ + トレイの両方を表す）
     "e3-shelf": {
         drawTile([color(0x38BDF8), color(0x4F46E5)], angle: -60)
         radialHighlight()
@@ -326,7 +326,7 @@ func refinedVertical() {
         drawSwipeDots(center: NSPoint(x: 420, y: 400), spacing: 118, radius: 50, trail: 300, dot: .white)
         glassRim()
     }
-    // 採用: e4 の夕焼け色 + e3 の中身の入ったノッチの棚
+    // 採用: e4 の夕焼け色 + e3 の中身の入ったノッチのトレイ
     refined["final"] = {
         drawTile([color(0xFB7185), color(0x7C3AED)], angle: -60)
         radialHighlight()
