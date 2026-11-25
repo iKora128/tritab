@@ -43,17 +43,21 @@ SIGN_IDENTITY=${SIGN_IDENTITY:--}
 SIGN_NAME=${SIGN_NAME:-ad-hoc}
 APP=build/TriTab.app
 
-echo "==> ビルド (arm64)"
-swift build -c release --arch arm64 >/dev/null
-echo "==> ビルド (x86_64)"
-swift build -c release --arch x86_64 >/dev/null
+echo "==> ビルド (arm64 + x86_64)"
+# 2 つを一度にビルドすると、1 つのユニバーサルのバイナリになる。置き場所は Swift の版で変わるので swift build に聞く
+# （Swift 6.4 から .build/out/Products/Release になり、アーキテクチャごとに分けてビルドすると上書きし合う）
+swift build -c release --arch arm64 --arch x86_64 >/dev/null
+BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/TriTab"
+# 古いバイナリを入れてしまわないよう、ソースより新しいことと、両方のアーキテクチャが入っていることを確かめる
+if [[ -n "$(find Sources -name '*.swift' -newer "$BIN" | head -1)" ]]; then
+  echo "エラー: $BIN がソースより古い（ビルドの置き場所が変わったかもしれない）" >&2
+  exit 1
+fi
+for arch in arm64 x86_64; do lipo "$BIN" -verify_arch "$arch"; done
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
-lipo -create \
-  .build/arm64-apple-macosx/release/TriTab \
-  .build/x86_64-apple-macosx/release/TriTab \
-  -output "$APP/Contents/MacOS/TriTab"
+cp "$BIN" "$APP/Contents/MacOS/TriTab"
 
 # 自動アップデート（Sparkle）。SwiftPM が取ってきたユニバーサル版をそのまま入れる
 FW="$APP/Contents/Frameworks/Sparkle.framework"
